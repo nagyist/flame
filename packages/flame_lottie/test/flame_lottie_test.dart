@@ -17,11 +17,10 @@ void main() {
 
       final lottieComponent = LottieComponent(composition);
 
-      await game.add(lottieComponent);
+      await game.world.add(lottieComponent);
       await game.ready();
 
-      expect(game.children, isNotEmpty);
-      expect(game.children, [lottieComponent]);
+      expect(game.world.children, [lottieComponent]);
     },
   );
 
@@ -29,40 +28,34 @@ void main() {
     'Load composition as AssetBundle and use loadLottie function by library',
     (game) async {
       final logoData =
-          Future.value(bytesForFile('example/assets/LottieLogo1.json'));
+          Future.value(_bytesForFile('example/assets/LottieLogo1.json'));
 
-      final mockAsset = FakeAssetBundle({'logo.json': logoData});
-
-      LottieComposition? composition;
+      final mockAsset = _FakeAssetBundle({'logo.json': logoData});
 
       final asset = Lottie.asset(
         'logo.json',
         bundle: mockAsset,
-        onLoaded: (c) {
-          composition = c;
-        },
       );
 
-      composition = await loadLottie(asset);
+      final composition = await loadLottie(asset);
 
       await game.ready();
 
-      expect(composition, isNotNull);
       expect(
-        composition!.duration,
+        composition.duration,
         const Duration(seconds: 5, milliseconds: 966),
       );
     },
   );
 }
 
-ByteData bytesForFile(String path) =>
+ByteData _bytesForFile(String path) =>
     File(path).readAsBytesSync().buffer.asByteData();
 
-class FakeAssetBundle extends Fake implements AssetBundle {
+class _FakeAssetBundle extends Fake implements AssetBundle {
   final Map<String, Future<ByteData>> data;
 
-  FakeAssetBundle(this.data);
+  _FakeAssetBundle(this.data);
 
   @override
   Future<ByteData> load(String key) {

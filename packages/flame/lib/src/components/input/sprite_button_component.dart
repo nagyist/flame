@@ -1,4 +1,5 @@
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
 import 'package:meta/meta.dart';
 
 enum ButtonState {
@@ -16,16 +17,10 @@ enum ButtonState {
 /// Note: You have to set the [button] in [onLoad] if you are not passing it in
 /// through the constructor.
 class SpriteButtonComponent extends SpriteGroupComponent<ButtonState>
-    with Tappable {
-  /// Callback for what should happen when the button is pressed.
-  void Function()? onPressed;
-
-  Sprite? button;
-  Sprite? buttonDown;
-
+    with TapCallbacks {
   SpriteButtonComponent({
-    this.button,
-    this.buttonDown,
+    Sprite? button,
+    Sprite? buttonDown,
     this.onPressed,
     super.position,
     Vector2? size,
@@ -34,41 +29,68 @@ class SpriteButtonComponent extends SpriteGroupComponent<ButtonState>
     super.anchor,
     super.children,
     super.priority,
-  }) : super(
+  })  : _button = button,
+        _buttonDown = buttonDown,
+        super(
           current: ButtonState.up,
           size: size ?? button?.originalSize,
         );
 
+  /// Callback for what should happen when the button is pressed.
+  void Function()? onPressed;
+
+  Sprite? _button;
+  Sprite? _buttonDown;
+
+  Sprite get button => _button!;
+  Sprite get buttonDown => _buttonDown ?? button;
+
+  set button(Sprite value) {
+    _button = value;
+    if (isLoaded) {
+      updateSprite(ButtonState.up, value);
+    }
+  }
+
+  set buttonDown(Sprite value) {
+    _buttonDown = value;
+    if (isLoaded) {
+      updateSprite(ButtonState.down, value);
+    }
+  }
+
   @override
   void onMount() {
     assert(
-      button != null,
+      _button != null,
       'The button sprite has to be set either in onLoad or in the constructor',
     );
-    sprites = {ButtonState.up: button!};
-    sprites![ButtonState.down] = buttonDown ?? button!;
+    if (size.isZero()) {
+      size = _button!.originalSize;
+    }
+    sprites = {
+      ButtonState.up: _button!,
+      ButtonState.down: buttonDown,
+    };
     super.onMount();
   }
 
   @override
   @mustCallSuper
-  bool onTapDown(_) {
+  void onTapDown(_) {
     current = ButtonState.down;
-    return false;
   }
 
   @override
   @mustCallSuper
-  bool onTapUp(_) {
-    onTapCancel();
-    return false;
-  }
-
-  @override
-  @mustCallSuper
-  bool onTapCancel() {
+  void onTapUp(_) {
     current = ButtonState.up;
     onPressed?.call();
-    return false;
+  }
+
+  @override
+  @mustCallSuper
+  void onTapCancel(_) {
+    current = ButtonState.up;
   }
 }

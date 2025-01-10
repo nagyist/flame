@@ -1,25 +1,28 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:flame/src/text/common/line_metrics.dart';
-import 'package:flame/src/text/elements/text_element.dart';
+import 'package:flame/text.dart';
+import 'package:meta/meta.dart';
 
-class GroupTextElement extends TextElement {
-  GroupTextElement(List<TextElement> children)
+class GroupTextElement extends InlineTextElement {
+  GroupTextElement(List<InlineTextElement> children)
       : assert(children.isNotEmpty, 'The children list cannot be empty'),
         _children = children,
         _metrics = _computeMetrics(children);
 
-  final List<TextElement> _children;
+  final List<InlineTextElement> _children;
   final LineMetrics _metrics;
 
   @override
   LineMetrics get metrics => _metrics;
 
+  @visibleForTesting
+  List<InlineTextElement> get children => List.unmodifiable(_children);
+
   @override
-  void render(Canvas canvas) {
+  void draw(Canvas canvas) {
     for (final child in _children) {
-      child.render(canvas);
+      child.draw(canvas);
     }
   }
 
@@ -31,7 +34,7 @@ class GroupTextElement extends TextElement {
     }
   }
 
-  static LineMetrics _computeMetrics(List<TextElement> elements) {
+  static LineMetrics _computeMetrics(List<InlineTextElement> elements) {
     var width = 0.0;
     var ascent = 0.0;
     var descent = 0.0;

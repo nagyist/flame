@@ -1,9 +1,8 @@
 import 'dart:math';
 
 import 'package:flame/components.dart';
-import 'package:flame/src/components/input/hud_margin_component.dart';
-import 'package:flame/src/gestures/events.dart';
-import 'package:meta/meta.dart';
+import 'package:flame/events.dart';
+import 'package:flutter/widgets.dart';
 
 enum JoystickDirection {
   up,
@@ -17,7 +16,8 @@ enum JoystickDirection {
   idle,
 }
 
-class JoystickComponent extends HudMarginComponent with Draggable {
+class JoystickComponent extends PositionComponent
+    with HasGameReference, ComponentViewportMargin, DragCallbacks {
   late final PositionComponent? knob;
   late final PositionComponent? background;
 
@@ -46,13 +46,14 @@ class JoystickComponent extends HudMarginComponent with Draggable {
   JoystickComponent({
     this.knob,
     this.background,
-    super.margin,
     super.position,
+    EdgeInsets? margin,
     double? size,
     double? knobRadius,
     Anchor super.anchor = Anchor.center,
     super.children,
     super.priority,
+    super.key,
   })  : assert(
           size != null || background != null,
           'Either size or background must be defined',
@@ -65,6 +66,7 @@ class JoystickComponent extends HudMarginComponent with Draggable {
         super(
           size: background?.size ?? Vector2.all(size ?? 0),
         ) {
+    this.margin = margin;
     this.knobRadius = knobRadius ?? this.size.x / 2;
   }
 
@@ -105,26 +107,33 @@ class JoystickComponent extends HudMarginComponent with Draggable {
   }
 
   @override
-  bool onDragStart(DragStartInfo info) {
+  bool onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
     return false;
   }
 
   @override
-  bool onDragUpdate(DragUpdateInfo info) {
-    _unscaledDelta.add(info.delta.viewport);
+  bool onDragUpdate(DragUpdateEvent event) {
+    _unscaledDelta.add(event.localDelta);
     return false;
   }
 
   @override
-  bool onDragEnd(_) {
-    onDragCancel();
+  bool onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    onDragStop();
     return false;
   }
 
   @override
-  bool onDragCancel() {
+  bool onDragCancel(DragCancelEvent event) {
+    super.onDragCancel(event);
+    onDragStop();
+    return false;
+  }
+
+  void onDragStop() {
     _unscaledDelta.setZero();
-    return false;
   }
 
   static const double _eighthOfPi = pi / 8;

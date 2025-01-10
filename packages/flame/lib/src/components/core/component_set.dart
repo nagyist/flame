@@ -67,6 +67,37 @@ class ComponentSet extends QueryableOrderedSet<Component> {
   @override
   bool get isNotEmpty => !isEmpty;
 
+  /// Queries the component set (typically [Component.children]) for
+  /// components of type [C].
+  ///
+  /// Example:
+  ///
+  /// ```dart
+  /// final myComponents = world.children.query<MyCustomComponent>();
+  /// ```
+  ///
+  /// This is equivalent to `world.children.whereType<MyCustomComponent>()`
+  /// except that [query] is O(1).
+  ///
+  /// The function returns an [Iterable]. In past versions of Flame,
+  /// it was a modifiable [List] but modifying this list would have been a bug.
+  ///
+  /// When [strictMode] is `true`, you *must* call [register]
+  /// for every type [C] you desire to use. Use something like:
+  ///
+  /// ```dart
+  /// world.children.register<MyCustomComponent>();
+  /// ```
+  @override
+  Iterable<C> query<C extends Component>() {
+    // We are returning an iterable (view) here to avoid hard-to-detect
+    // bugs where the user assumes the query is a unique result list
+    // and they start doing things like `removeWhere()`.
+    // This would remove components from the component set itself
+    // (but not from the game)!
+    return super.query();
+  }
+
   /// Sorts the components according to their `priority`s. This method is
   /// invoked by the framework when it knows that the priorities of the
   /// components in this set has changed.
@@ -76,41 +107,5 @@ class ComponentSet extends QueryableOrderedSet<Component> {
     // bypass the wrapper because the components are already added
     super.clear();
     elements.forEach(super.add);
-  }
-
-  /// Call this on your update method.
-  ///
-  /// This method effectuates any pending operations of insertion or removal,
-  /// and thus actually modifies the components set.
-  /// Note: do not call this while iterating the set.
-  @Deprecated('Will be removed in 1.8.0.')
-  void updateComponentList() {}
-
-  @Deprecated('Will be removed in 1.8.0.')
-  @override
-  void rebalanceAll() => reorder();
-
-  @Deprecated('Will be removed in 1.8.0.')
-  @override
-  void rebalanceWhere(bool Function(Component element) test) {
-    // bypass the wrapper because the components are already added
-    final elements = super.removeWhere(test).toList();
-    elements.forEach(super.add);
-  }
-
-  /// Changes the priority of [component] and reorders the games component list.
-  ///
-  /// Returns true if changing the component's priority modified one of the
-  /// components that existed directly on the game and false if it
-  /// either was a child of another component, if it didn't exist at all or if
-  /// it was a component added directly on the game but its priority didn't
-  /// change.
-  @Deprecated('Will be removed in 1.8.0.')
-  bool changePriority(
-    Component component,
-    int priority,
-  ) {
-    component.priority = priority;
-    return true;
   }
 }

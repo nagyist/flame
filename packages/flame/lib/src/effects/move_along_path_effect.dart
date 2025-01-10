@@ -1,9 +1,9 @@
 import 'dart:ui';
 
+import 'package:flame/components.dart';
 import 'package:flame/src/effects/controllers/effect_controller.dart';
 import 'package:flame/src/effects/move_effect.dart';
 import 'package:flame/src/effects/provider_interfaces.dart';
-import 'package:vector_math/vector_math_64.dart';
 
 /// This effect will move the target along the specified path, which may
 /// contain curved segments, but must be simply-connected.
@@ -31,6 +31,7 @@ class MoveAlongPathEffect extends MoveEffect {
     bool oriented = false,
     PositionProvider? target,
     void Function()? onComplete,
+    super.key,
   })  : _isAbsolute = absolute,
         _followDirection = oriented,
         super(
@@ -85,7 +86,12 @@ class MoveAlongPathEffect extends MoveEffect {
         'An `oriented` MoveAlongPathEffect cannot be applied to a target that '
         'does not support rotation',
       );
-      (target as AngleProvider).angle = _lastAngle = -start.angle;
+      _lastAngle = -start.angle;
+      final targetProvider = target;
+      (targetProvider as AngleProvider).angle = -start.angle;
+      if (targetProvider is PositionComponent) {
+        targetProvider.angle += targetProvider.nativeAngle;
+      }
     }
     if (_isAbsolute) {
       target.position.x = _lastOffset.x = start.position.dx;

@@ -9,8 +9,7 @@ import 'package:flame/palette.dart';
 import 'package:flame/sprite.dart';
 import 'package:flutter/material.dart';
 
-class JoystickAdvancedExample extends FlameGame
-    with HasDraggables, HasTappables, HasCollisionDetection {
+class JoystickAdvancedExample extends FlameGame with HasCollisionDetection {
   static const String description = '''
     In this example we showcase how to use the joystick by creating 
     `SpriteComponent`s that serve as the joystick's knob and background.
@@ -20,6 +19,11 @@ class JoystickAdvancedExample extends FlameGame
     Steer the player by using the joystick and flip and rotate it by pressing
     the buttons.
   ''';
+
+  JoystickAdvancedExample()
+      : super(
+          camera: CameraComponent.withFixedResolution(width: 1200, height: 800),
+        );
 
   late final JoystickPlayer player;
   late final JoystickComponent joystick;
@@ -34,7 +38,7 @@ class JoystickAdvancedExample extends FlameGame
       columns: 6,
       rows: 1,
     );
-    add(ScreenHitbox());
+    world.add(ScreenHitbox());
     joystick = JoystickComponent(
       knob: SpriteComponent(
         sprite: sheet.getSpriteById(1),
@@ -153,17 +157,17 @@ class JoystickAdvancedExample extends FlameGame
       ),
     );
 
-    final _regular = TextPaint(
+    final regular = TextPaint(
       style: TextStyle(color: BasicPalette.white.color),
     );
     speedText = TextComponent(
       text: 'Speed: 0',
-      textRenderer: _regular,
-    )..positionType = PositionType.viewport;
+      textRenderer: regular,
+    );
     directionText = TextComponent(
       text: 'Direction: idle',
-      textRenderer: _regular,
-    )..positionType = PositionType.viewport;
+      textRenderer: regular,
+    );
 
     final speedWithMargin = HudMarginComponent(
       margin: const EdgeInsets.only(
@@ -179,15 +183,17 @@ class JoystickAdvancedExample extends FlameGame
       ),
     )..add(directionText);
 
-    add(player);
-    add(joystick);
-    add(flipButton);
-    add(flopButton);
-    add(buttonComponent);
-    add(spriteButtonComponent);
-    add(shapeButton);
-    add(speedWithMargin);
-    add(directionWithMargin);
+    world.add(player);
+    camera.viewport.addAll([
+      joystick,
+      flipButton,
+      flopButton,
+      buttonComponent,
+      spriteButtonComponent,
+      shapeButton,
+      speedWithMargin,
+      directionWithMargin,
+    ]);
   }
 
   @override

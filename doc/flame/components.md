@@ -8,9 +8,8 @@ This diagram might look intimidating, but don't worry, it is not as complex as i
 
 ## Component
 
-All components inherit from the abstract class `Component` and all components can have other
-`Component`s as children. This is the base of what we call the Flame Component System, or FCS for
-short.
+All components inherit from the `Component` class and can have other `Component`s as children.
+This is the base of what we call the Flame Component System, or FCS for short.
 
 Children can be added either with the `add(Component c)` method or directly in the constructor.
 
@@ -47,7 +46,7 @@ it is only run once even if the component is removed both by using the parents r
 the `Component` remove method.
 
 The `onLoad` method can be overridden to run asynchronous initialization code for the component,
-like loading an image for example. This method is executed after `onGameResize`, but before
+like loading an image for example. This method is executed before `onGameResize` and
 `onMount`. This method is guaranteed to execute only once during the lifetime of the component, so
 you can think of it as an "asynchronous constructor".
 
@@ -105,12 +104,12 @@ In the following example we first initialize the component with priority 1, and 
 user taps the component we change its priority to 2:
 
 ```dart
-class MyComponent extends PositionComponent with Tappable {
+class MyComponent extends PositionComponent with TapCallbacks {
 
   MyComponent() : super(priority: 1);
 
   @override
-  void onTap() {
+  void onTapDown(TapDownEvent event) {
     priority = 2;
   }
 }
@@ -189,6 +188,28 @@ that they will appear in the children list in the same order as they were
 scheduled for addition.
 
 
+### Access to the World from a Component
+
+If a component that has a `World` as an ancestor and requires access to that `World` object, one can
+use the `HasWorldReference` mixin.
+
+Example:
+
+```dart
+class MyComponent extends Component with HasWorldReference<MyWorld>,
+    TapCallbacks {
+  @override
+  void onTapDown(TapDownEvent info) {
+    // world is of type MyWorld
+    world.add(AnotherComponent());
+  }
+}
+```
+
+If you try to access `world` from a component that doesn't have a `World`
+ancestor of the correct type an assertion error will be thrown.
+
+
 ### Ensuring a component has a given parent
 
 When a component requires to be added to a specific parent type the
@@ -231,6 +252,52 @@ class MyComponent extends Component with HasAncestor<MyAncestorComponent> {
 
 If you try to add `MyComponent` to a tree that does not contain `MyAncestorComponent`,
 an assertion error will be thrown.
+
+
+### Component Keys
+
+Components can have an identification key that allows them to be retrieved from the component tree, from
+any point of the tree.
+
+To register a component with a key, simply pass a key to the `key` argument on the component's
+constructor:
+
+```dart
+final myComponent = Component(
+  key: ComponentKey.named('player'),
+);
+```
+
+Then, to retrieve it in a different point of the component tree:
+
+```dart
+flameGame.findByKey(ComponentKey.named('player'));
+```
+
+There are two types of keys, `unique` and `named`. Unique keys are based on equality of the key
+instance, meaning that:
+
+```dart
+final key = ComponentKey.unique();
+final key2 = key;
+print(key == key2); // true
+print(key == ComponentKey.unique()); // false
+```
+
+Named ones are based on the name that it receives, so:
+
+```dart
+final key1 = ComponentKey.named('player');
+final key2 = ComponentKey.named('player');
+print(key1 == key2); // true
+```
+
+When named keys are used, the `findByKeyName` helper can also be used to retrieve the component.
+
+
+```dart
+flameGame.findByKeyName('player');
+```
 
 
 ### Querying child components
@@ -292,35 +359,84 @@ void onDragUpdate(DragUpdateInfo info) {
 ```
 
 
-### PositionType
+### Visibility of components
 
-If you want to create a HUD (Head-up display) or another component that isn't positioned in relation
-to the game coordinates, you can change the `PositionType` of the component.
-The default `PositionType` is `positionType = PositionType.game` and that can be changed to
-either `PositionType.viewport` or `PositionType.widget` depending on how you want to position
-the component.
+The recommended way to hide or show a component is usually to add or remove it from the tree
+using the `add` and `remove` methods.
 
-- `PositionType.game` (Default) - Respects camera and viewport.
-- `PositionType.viewport` - Respects viewport only (ignores camera).
-- `PositionType.widget` - Position in relation to the coordinate system of the Flutter game
-   widget (i.e. the raw canvas).
+However, adding and removing components from the tree will trigger lifecycle steps for that
+component (such as calling `onRemove` and `onMount`). It is also an asynchronous process and care
+needs to be taken to ensure the component has finished removing before it is added again if you
+are removing and adding a component in quick succession.
 
-Most of your components will probably be positioned according to `PositionType.game`, since you
-want them to respect the `Camera` and the `Viewport`. But quite often you want for example buttons
-and text to always show on the screen, no matter if you move the camera, then you want to use
-`PositionType.viewport`. In some rare cases you want to use `PositionType.widget` to position
-your widgets, when you don't want the component to respect the camera nor the viewport; this could
-for example be for controls or joysticks that would not be ergonomic to use if they had to stay
-within the viewport.
+```dart
+/// Example of handling the removal and adding of a child component
+/// in quick succession
+void show() async {
+  // Need to await the [removed] future first, just in case the
+  // component is still in the process of being removed.
+  await myChildComponent.removed;
+  add(myChildComponent);
+}
 
-Do note that this setting is only respected if the component is added directly to the root
-`FlameGame` and not as a child component of another component.
+void hide() {
+  remove(myChildComponent);
+}
+```
+
+These behaviors are not always desirable.
+
+An alternative method to show and hide a component is to use the `HasVisibility` mixin, which may
+be used on any class that inherits from `Component`. This mixin introduces the `isVisible` property.
+Simply set `isVisible` to `false` to hide the component, and `true` to show it again, without
+removing it from the tree. This affects the visibility of the component and all it's descendants
+(children).
+
+```dart
+/// Example that implements HasVisibility
+class MyComponent extends PositionComponent with HasVisibility {}
+
+/// Usage of the isVisible property
+final myComponent = MyComponent();
+add(myComponent);
+
+myComponent.isVisible = false;
+```
+
+The mixin only affects whether the component is rendered, and will not affect other behaviors.
+
+```{note}
+Important! Even when the component is not visible, it is still in the tree and
+will continue to receive calls to 'update' and all other lifecycle events. It
+will still respond to input events, and will still interact with other
+components, such as collision detection for example.
+```
+
+The mixin works by preventing the `renderTree` method, therefore if `renderTree` is being
+overridden, a manual check for `isVisible` should be included to retain this functionality.
+
+```dart
+class MyComponent extends PositionComponent with HasVisibility {
+
+  @override
+  void renderTree(Canvas canvas) {
+    // Check for visibility
+    if (isVisible) {
+      // Custom code here
+
+      // Continue rendering the tree
+      super.renderTree(canvas);
+    }
+  }
+}
+```
 
 
 ## PositionComponent
 
-This class represent a positioned object on the screen, being a floating rectangle or a rotating
-sprite. It can also represent a group of positioned components if children are added to it.
+This class represents a positioned object on the screen, being a floating rectangle, a rotating
+sprite, or anything else with position and size. It can also represent a group of positioned
+components if children are added to it.
 
 The base of the `PositionComponent` is that it has a `position`, `size`, `scale`, `angle` and
 `anchor` which transforms how the component is rendered.
@@ -375,11 +491,47 @@ Right/East| pi/2         | 90
 
 ### Anchor
 
+```{flutter-app}
+:sources: ../flame/examples
+:page: anchor
+:show: widget code infobox
+This example shows effect of changing `anchor` point of parent (red) and child (blue)
+components. Tap on them to cycle through the anchor points. Note that the local
+position of the child component is (0, 0) at all times.
+```
+
 The `anchor` is where on the component that the position and rotation should be defined from (the
 default is `Anchor.topLeft`). So if you have the anchor set as `Anchor.center` the component's
 position on the screen will be in the center of the component and if an `angle` is applied, it is
 rotated around the anchor, so in this case around the center of the component. You can think of it
 as the point within the component by which Flame "grabs" it.
+
+When `position` or `absolutePosition` of a component is queried, the returned coordinates are that of
+the `anchor` of the component. In case if you want to find the position of a specific anchor point
+of a component which is not actually the `anchor` of that component, you can use the `positionOfAnchor`
+and `absolutePositionOfAnchor` method.
+
+```dart
+final comp = PositionComponent(
+  size: Vector2.all(20),
+  anchor: Anchor.center,
+);
+
+// Returns (0,0)
+final p1 = component.position;
+
+// Returns (10, 10)
+final p2 = component.positionOfAnchor(Anchor.bottomRight);
+```
+
+A common pitfall when using `anchor` is confusing it for as being the attachment point for children
+components. For example, setting `anchor` to `Anchor.center` for a parent component does not mean
+that the children components will be placed w.r.t the center of parent.
+
+```{note}
+Local origin for a child component is always the top-left corner of its parent component,
+irrespective of their `anchor` values.
+```
 
 
 ### PositionComponent children
@@ -389,7 +541,8 @@ that the `position`, `angle` and `scale` will be relative to the parents state.
 So if you, for example, wanted to position a child in the center of the parent you would do this:
 
 ```dart
-Future<void> onLoad() async {
+@override
+void onLoad() {
   final parent = PositionComponent(
     position: Vector2(100, 100),
     size: Vector2(100, 100),
@@ -463,6 +616,7 @@ This class is used to represent a Component that has sprites that run in a singl
 This will create a simple three frame animation using 3 different images:
 
 ```dart
+@override
 Future<void> onLoad() async {
   final sprites = [0, 1, 2]
       .map((i) => Sprite.load('player_$i.png'));
@@ -481,6 +635,7 @@ If you have a sprite sheet, you can use the `sequenced` constructor from the `Sp
 class (check more details on [Images &gt; Animation](rendering/images.md#animation)):
 
 ```dart
+@override
 Future<void> onLoad() async {
   final size = Vector2.all(64.0);
   final data = SpriteAnimationData.sequenced(
@@ -495,51 +650,63 @@ Future<void> onLoad() async {
 }
 ```
 
-If you are not using `FlameGame`, don't forget this component needs to be updated, because the
-animation object needs to be ticked to move the frames.
-
-To listen when the animation is done (when it reaches the last frame and is not looping) you can
-use `animation.completed`.
+All animation components internally maintains a `SpriteAnimationTicker` which ticks the `SpriteAnimation`.
+This allows multiple components to share the same animation object.
 
 Example:
 
 ```dart
-await animation.completed;
+final sprites = [/*You sprite list here*/];
+final animation = SpriteAnimation.spriteList(sprites, stepTime: 0.01);
+
+final animationTicker = SpriteAnimationTicker(animation);
+
+// or alternatively, you can ask the animation object to create one for you.
+
+final animationTicker = animation.createTicker(); // creates a new ticker
+
+animationTicker.update(dt);
+```
+
+To listen when the animation is done (when it reaches the last frame and is not looping) you can
+use `animationTicker.completed`.
+
+Example:
+
+```dart
+await animationTicker.completed;
 
 doSomething();
 
 // or alternatively
 
-animation.completed.whenComplete(doSomething);
+animationTicker.completed.whenComplete(doSomething);
 ```
 
-Additionally, this component also has the following optional event callbacks:  `onStart`, `onFrame`,
+Additionally, `SpriteAnimationTicker` also has the following optional event callbacks:  `onStart`, `onFrame`,
 and `onComplete`. To listen to these events, you can do the following:
 
 ```dart
-final animation =
-    SpriteAnimation.spriteList([sprite], stepTime: 1, loop: false)
-      ..onStart = () {
-        // Do something on start.
-      };
+final animationTicker = SpriteAnimationTicker(animation)
+  ..onStart = () {
+    // Do something on start.
+  };
 
-final animation =
-    SpriteAnimation.spriteList([sprite], stepTime: 1, loop: false)
-      ..onComplete = () {
-        // Do something on completion.
-      };
+final animationTicker = SpriteAnimationTicker(animation)
+  ..onComplete = () {
+    // Do something on completion.
+  };
 
-final animation =
-    SpriteAnimation.spriteList([sprite], stepTime: 1, loop: false)
-      ..onFrame = (index) {
-        if (index == 1) {
-          // Do something for the second frame.
-        }
-      };
+final animationTicker = SpriteAnimationTicker(animation)
+  ..onFrame = (index) {
+    if (index == 1) {
+      // Do something for the second frame.
+    }
+  };
 ```
 
 
-## SpriteAnimationGroup
+## SpriteAnimationGroupComponent
 
 `SpriteAnimationGroupComponent` is a simple wrapper around `SpriteAnimationComponent` which enables
 your component to hold several animations and change the current playing animation at runtime. Since
@@ -573,16 +740,54 @@ final robot = SpriteAnimationGroupComponent<RobotState>(
 robot.current = RobotState.running;
 ```
 
+As this component works with multiple `SpriteAnimation`s, naturally it needs equal number of animation
+tickers to make all those animation tick. Use `animationsTickers` getter to access a map containing tickers
+for each animation state. This can be useful if you want to register callbacks for `onStart`, `onComplete`
+and `onFrame`.
 
-## SpriteGroup
+Example:
+
+```dart
+enum RobotState { idle, running, jump }
+
+final running = await loadSpriteAnimation(/* omitted */);
+final idle = await loadSpriteAnimation(/* omitted */);
+
+final robot = SpriteAnimationGroupComponent<RobotState>(
+  animations: {
+    RobotState.running: running,
+    RobotState.idle: idle,
+  },
+  current: RobotState.idle,
+);
+
+robot.animationTickers?[RobotState.running]?.onStart = () {
+  // Do something on start of running animation.
+};
+
+robot.animationTickers?[RobotState.jump]?.onStart = () {
+  // Do something on start of jump animation.
+};
+
+robot.animationTickers?[RobotState.jump]?.onComplete = () {
+  // Do something on complete of jump animation.
+};
+
+robot.animationTickers?[RobotState.idle]?.onFrame = (currentIndex) {
+  // Do something based on current frame index of idle animation.
+};
+```
+
+
+## SpriteGroupComponent
 
 `SpriteGroupComponent` is pretty similar to its animation counterpart, but especially for sprites.
 
 Example:
 
 ```dart
-class ButtonComponent extends SpriteGroupComponent<ButtonState>
-    with HasGameRef<SpriteGroupExample>, Tappable {
+class PlayerComponent extends SpriteGroupComponent<ButtonState>
+    with HasGameReference<SpriteGroupExample>, TapCallbacks {
   @override
   Future<void>? onLoad() async {
     final pressedSprite = await gameRef.loadSprite(/* omitted */);
@@ -601,6 +806,68 @@ class ButtonComponent extends SpriteGroupComponent<ButtonState>
 ```
 
 
+## SpawnComponent
+
+This component is a non-visual component that spawns other components inside of the parent of the
+`SpawnComponent`. It's great if you for example want to spawn enemies or power-ups randomly within
+an area.
+
+The `SpawnComponent` takes a factory function that it uses to create new components and an area
+where the components should be spawned within (or along the edges of).
+
+For the area, you can use the `Circle`, `Rectangle` or `Polygon` class, and if you want to only
+spawn components along the edges of the shape set the `within` argument to false (defaults to true).
+
+This would for example spawn new components of the type `MyComponent` every 0.5 seconds randomly
+within the defined circle:
+
+The component supports two types of factories. The `factory` returns a single component and the
+`multiFactory` returns a list of components that are added in a single step.
+
+The factory functions takes an `int` as an argument, which is the number of components that have
+been spawned, so if for example 4 components have been spawned already the 5th call of the factory
+method will be called with the `amount=4`, since the counting starts at 0 for the first call.
+
+The `factory` with a single component is for backward compatibility, so you should use the
+`multiFactory` if in doubt. A single component `factory` will be wrapped internally to return a
+single item list and then used as the `multiFactory`.
+
+```dart
+SpawnComponent(
+  factory: (i) => MyComponent(size: Vector2(10, 20)),
+  period: 0.5,
+  area: Circle(Vector2(100, 200), 150),
+);
+```
+
+If you don't want the spawning rate to be static, you can use the `SpawnComponent.periodRange`
+constructor with the `minPeriod` and `maxPeriod` arguments instead.
+In the following example the component would be spawned randomly within the circle and the time
+between each new spawned component is between 0.5 to 10 seconds.
+
+```dart
+SpawnComponent.periodRange(
+  factory: (i) => MyComponent(size: Vector2(10, 20)),
+  minPeriod: 0.5,
+  maxPeriod: 10,
+  area: Circle(Vector2(100, 200), 150),
+);
+```
+
+If you want to set the position yourself within the `factory` function, you can use set
+`selfPositioning = true` in the constructors and you will be able to set the positions yourself and
+ignore the `area` argument.
+
+```dart
+SpawnComponent(
+  factory: (i) =>
+    MyComponent(position: Vector2(100, 200), size: Vector2(10, 20)),
+  selfPositioning: true,
+  period: 0.5,
+);
+```
+
+
 ## SvgComponent
 
 **Note**: To use SVG with Flame, use the [`flame_svg`](https://github.com/flame-engine/flame_svg)
@@ -610,6 +877,7 @@ This component uses an instance of `Svg` class to represent a Component that has
 rendered in the game:
 
 ```dart
+@override
 Future<void> onLoad() async {
   final svg = await Svg.load('android.svg');
   final android = SvgComponent.fromSvg(
@@ -619,65 +887,6 @@ Future<void> onLoad() async {
   );
 }
 ```
-
-
-## FlareActorComponent
-
-**Note**: The previous implementation of a Flare integration API using `FlareAnimation` and
-`FlareComponent` has been deprecated.
-
-To use Flare within Flame, use the [`flame_flare`](https://github.com/flame-engine/flame_flare)
-package.
-
-This is the interface for using a [flare animation](https://pub.dev/packages/flare_flutter) within
-flame. `FlareActorComponent` has almost the same API as of flare's `FlareActor` widget. It receives
-the animation filename (that is loaded by default with `Flame.bundle`), it can also receive a
-FlareController that can play multiple animations and control nodes.
-
-```dart
-import 'package:flame_flare/flame_flare.dart';
-
-class YourFlareController extends FlareControls {
-
-  late ActorNode rightHandNode;
-
-  void initialize(FlutterActorArtboard artboard) {
-    super.initialize(artboard);
-
-    // get flare node
-    rightHand = artboard.getNode('right_hand');
-  }
-}
-
-final fileName = 'assets/george_washington.flr';
-final size = Vector2(1776, 1804);
-final controller = YourFlareController();
-
-FlareActorComponent flareAnimation = FlareActorComponent(
-  fileName,
-  controller: controller,
-  width: 306,
-  height: 228,
-);
-
-flareAnimation.x = 50;
-flareAnimation.y = 240;
-add(flareAnimation);
-
-// to play an animation
-controller.play('rise_up');
-
-// you can add another animation to play at the same time
-controller.play('close_door_way_out');
-
-// also, you can get a flare node and modify it
-controller.rightHandNode.rotation = math.pi;
-```
-
-You can also change the current playing animation by using the `updateAnimation` method.
-
-For a working example, check the example in the
-[flame_flare repository](https://github.com/flame-engine/flame/tree/main/packages/flame_flare/example).
 
 
 ## ParallaxComponent
@@ -734,6 +943,7 @@ They simplest way is to set the named optional parameters `baseVelocity` and
 background images along the X-axis with a faster speed the "closer" the image is:
 
 ```dart
+@override
 Future<void> onLoad() async {
   final parallaxComponent = await loadParallaxComponent(
     _dataList,
@@ -747,7 +957,8 @@ You can set the baseSpeed and layerDelta at any time, for example if your charac
 game speeds up.
 
 ```dart
-Future<void> onLoad() async {
+@override
+void onLoad() {
   final parallax = parallaxComponent.parallax;
   parallax.baseSpeed = Vector2(100, 0);
   parallax.velocityMultiplierDelta = Vector2(2.0, 1.0);
@@ -866,9 +1077,9 @@ For example you could create a diamond shapes polygon like this:
 void main() {
   PolygonComponent.relative(
     [
-      Vector2(0.0, 1.0), // Middle of top wall
+      Vector2(0.0, -1.0), // Middle of top wall
       Vector2(1.0, 0.0), // Middle of right wall
-      Vector2(0.0, -1.0), // Middle of bottom wall
+      Vector2(0.0, 1.0), // Middle of bottom wall
       Vector2(-1.0, 0.0), // Middle of left wall
     ],
     size: Vector2.all(100),
@@ -885,9 +1096,6 @@ the center of the polygon.
 
 In the image you can see how the polygon shape formed by the purple arrows is defined by the red
 arrows.
-
-Remember to define the lists in a counter clockwise manner (if you think in the screen coordinate
-system where the y-axis is flipped, otherwise it is clockwise).
 
 
 ### RectangleComponent
@@ -984,51 +1192,6 @@ void main() {
 ```
 
 
-## TiledComponent
-
-Tiled is a free and open source, full-featured level and map editor for your platformer or
-RPG game. Currently we have an "in progress" implementation of a Tiled component. This API
-uses the lib [tiled.dart](https://github.com/flame-engine/tiled.dart) to parse map files and
-render visible layers using the performant `SpriteBatch` for each layer.
-
-Supported map types include: Orthogonal, Isometric, Hexagonal, and Staggered.
-
-Orthogonal | Hexagonal             |  Isomorphic
-:--:|:-------------------------:|:-------------------------:
-![An example of an orthogonal map](../images/orthogonal.png)|![An example of hexagonal map](../images/pointy_hex_even.png) |  ![An example of isomorphic map](../images/tile_stack_single_move.png)
-
-An example of how to use the API can be found
-[here](https://github.com/flame-engine/flame_tiled/tree/main/example).
-
-
-### TileStack
-
-Once a `TiledComponent` is loaded, you can select any column of (x,y) tiles in a `tileStack` to
-then add animation. Removing the stack will not remove the tiles from the map.
-
-> **Note**: This currently only supports position based effects.
-
-```dart
-void onLoad() {
-  final stack = map.tileMap.tileStack(4, 0, named: {'floor_under'});
-  stack.add(
-    SequenceEffect(
-      [
-        MoveEffect.by(
-          Vector2(5, 0),
-          NoiseEffectController(duration: 1, frequency: 20),
-        ),
-        MoveEffect.by(Vector2.zero(), LinearEffectController(2)),
-      ],
-      repeatCount: 3,
-    )
-      ..onComplete = () => stack.removeFromParent(),
-  );
-  map.add(stack);
-}
-```
-
-
 ## IsometricTileMapComponent
 
 This component allows you to render an isometric map based on a cartesian matrix of blocks and an
@@ -1040,7 +1203,7 @@ A simple example on how to use it:
 // Creates a tileset, the block ids are automatically assigned sequentially
 // starting at 0, from left to right and then top to bottom.
 final tilesetImage = await images.load('tileset.png');
-final tileset = IsometricTileset(tilesetImage, 32);
+final tileset = SpriteSheet(image: tilesetImage, srcSize: Vector2.all(32));
 // Each element is a block id, -1 means nothing
 final matrix = [[0, 1, 0], [1, 0, 0], [1, 1, 1]];
 add(IsometricTileMapComponent(tileset, matrix));
@@ -1063,7 +1226,7 @@ This is an example of how a quarter-length map looks like:
 Flame's Example app contains a more in-depth example, featuring how to parse coordinates to make a
 selector. The code can be found
 [here](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/rendering/isometric_tile_map_example.dart),
-and a live version can be seen [here](https://examples.flame-engine.org/#/Rendering_Isometric%20Tile%20Map).
+and a live version can be seen [here](https://examples.flame-engine.org/#/Rendering_Isometric_Tile_Map).
 
 
 ## NineTileBoxComponent
@@ -1218,3 +1381,14 @@ can be used to animate some properties of your components, like position or dime
 You can check the list of those effects [here](effects.md).
 
 Examples of the running effects can be found [here](https://github.com/flame-engine/flame/tree/main/examples/lib/stories/effects);
+
+
+## When not using `FlameGame`
+
+If you are not using `FlameGame`, don't forget that all components needs to be updated every time your
+game updates. This lets component perform their internal processing and update their state.
+
+For example, the `SpriteAnimationTicker` inside all the `SpriteAnimation` based components needs to tick
+the animation object to decide which animation frame will be displayed next. This can be done by manually
+calling `component.update()` when not using `FlameGame`. This also means, if you are implementing your
+own sprite animation based component, you can directly use a `SpriteAnimationTicker` to update the `SpriteAnimation`.

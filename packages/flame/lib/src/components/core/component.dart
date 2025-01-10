@@ -1,20 +1,14 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
+import 'package:flame/components.dart';
+import 'package:flame/game.dart';
 import 'package:flame/src/cache/value_cache.dart';
-import 'package:flame/src/components/core/component_set.dart';
 import 'package:flame/src/components/core/component_tree_root.dart';
-import 'package:flame/src/components/core/position_type.dart';
-import 'package:flame/src/components/mixins/coordinate_transform.dart';
-import 'package:flame/src/components/mixins/has_game_ref.dart';
 import 'package:flame/src/effects/provider_interfaces.dart';
-import 'package:flame/src/game/flame_game.dart';
-import 'package:flame/src/game/game.dart';
-import 'package:flame/src/gestures/events.dart';
-import 'package:flame/src/text/text_paint.dart';
 import 'package:flutter/painting.dart';
 import 'package:meta/meta.dart';
-import 'package:vector_math/vector_math_64.dart';
 
 /// [Component]s are the basic building blocks for a [FlameGame].
 ///
@@ -68,11 +62,14 @@ import 'package:vector_math/vector_math_64.dart';
 /// [update]d, and then all the components will be [render]ed.
 ///
 /// You may also need to override [containsLocalPoint] if the component needs to
-/// respond to tap events or similar; the [componentsAtPoint] may also need to
-/// be overridden if you have reimplemented [renderTree].
+/// respond to tap events or similar; the [componentsAtLocation] may also need
+/// to be overridden if you have reimplemented [renderTree].
 class Component {
-  Component({Iterable<Component>? children, int? priority})
-      : _priority = priority ?? 0 {
+  Component({
+    Iterable<Component>? children,
+    int? priority,
+    this.key,
+  }) : _priority = priority ?? 0 {
     if (children != null) {
       addAll(children);
     }
@@ -262,20 +259,27 @@ class Component {
   /// This can be null if the component hasn't been added to the component tree
   /// yet, or if it is the root of component tree.
   ///
-  /// Setting this property is equivalent to the [changeParent] method, or to
-  /// [removeFromParent] if setting to null.
+  /// Setting this property to `null` is equivalent to [removeFromParent].
+  /// Setting it to a new parent component is equivalent to calling
+  /// [addToParent] and will properly remove this component from its current
+  /// parent, if any.
+  ///
+  /// Note that the [parent] setter, like [add] and similar methods,
+  /// merely enqueues the move from one parent to another. For example:
+  ///
+  /// ```dart
+  /// coin.parent = inventory;
+  /// // The inventory.children set does not include coin yet.
+  /// await game.lifecycleEventsProcessed;
+  /// // The inventory.children set now includes coin.
+  /// ```
   Component? get parent => _parent;
   Component? _parent;
   set parent(Component? newParent) {
-    if (newParent == _parent) {
-      return;
-    } else if (newParent == null) {
+    if (newParent == null) {
       removeFromParent();
-    } else if (_parent == null) {
-      addToParent(newParent);
     } else {
-      final root = findGame()! as ComponentTreeRoot;
-      root.enqueueMove(this, newParent);
+      addToParent(newParent);
     }
   }
 
@@ -385,9 +389,27 @@ class Component {
 
   @internal
   static Game? staticGameInstance;
-  Game? findGame() {
-    return staticGameInstance ??
-        ((this is Game) ? (this as Game) : _parent?.findGame());
+
+  /// Fetches the nearest [FlameGame] ancestor to the component.
+  FlameGame? findGame() {
+    assert(
+      staticGameInstance is FlameGame || staticGameInstance == null,
+      'A component needs to have a FlameGame as the root.',
+    );
+    final gameInstance = staticGameInstance is FlameGame
+        ? staticGameInstance! as FlameGame
+        : null;
+    return gameInstance ??
+        ((this is FlameGame) ? (this as FlameGame) : _parent?.findGame());
+  }
+
+  /// Fetches the root [FlameGame] ancestor to the component.
+  FlameGame? findRootGame() {
+    var game = findGame();
+    while (game?.parent != null) {
+      game = game!.parent!.findGame();
+    }
+    return game;
   }
 
   /// Whether the children list contains the given component.
@@ -534,6 +556,13 @@ class Component {
   /// The cost of this flexibility is that the component won't be added right
   /// away. Instead, it will be placed into a queue, and then added later, after
   /// it has finished loading, but no sooner than on the next game tick.
+  /// You can await [FlameGame.lifecycleEventsProcessed] like so:
+  ///
+  /// ```dart
+  /// world.add(coin);
+  /// await game.lifecycleEventsProcessed;
+  /// // The coin is now guaranteed to be added.
+  /// ```
   ///
   /// When multiple children are scheduled to be added to the same parent, we
   /// start loading all of them as soon as possible. Nevertheless, the children
@@ -555,7 +584,7 @@ class Component {
   /// A component can only be added to one parent at a time. It is an error to
   /// try to add it to multiple parents, or even to the same parent multiple
   /// times. If you need to change the parent of a component, use the
-  /// [changeParent] method.
+  /// [parent] setter.
   FutureOr<void> add(Component component) => _addChild(component);
 
   /// Adds this component as a child of [parent] (see [add] for details).
@@ -574,16 +603,22 @@ class Component {
   }
 
   FutureOr<void> _addChild(Component child) {
-    assert(
-      child._parent == null,
-      '$child cannot be added to $this because it already has a parent: '
-      '${child._parent}',
-    );
-    child._parent = this;
-    final game = findGame();
-    if (isMounted) {
-      (game! as FlameGame).enqueueAdd(child, this);
+    final game = findGame() ?? child.findGame();
+    if ((!isMounted && !child.isMounted) || game == null) {
+      child._parent?.children.remove(child);
+      child._parent = this;
+      children.add(child);
+    } else if (child._parent != null) {
+      if (child.isRemoving) {
+        game.dequeueRemove(child);
+        _clearRemovingBit();
+      }
+      game.enqueueMove(child, this);
+    } else if (isMounted && !child.isMounted) {
+      child._parent = this;
+      game.enqueueAdd(child, this);
     } else {
+      child._parent = this;
       // This will be reconciled during the mounting stage
       children.add(child);
     }
@@ -604,21 +639,17 @@ class Component {
   void remove(Component component) => _removeChild(component);
 
   /// Remove the component from its parent in the next tick.
-  void removeFromParent() => _parent?._removeChild(this);
+  void removeFromParent() => _parent?.remove(this);
 
   /// Removes all the children in the list and calls [onRemove] for all of them
   /// and their children.
   void removeAll(Iterable<Component> components) {
-    components.forEach(remove);
+    components.toList(growable: false).forEach(_removeChild);
   }
 
   /// Removes all the children for which the [test] function returns true.
   void removeWhere(bool Function(Component component) test) {
-    for (final component in children) {
-      if (test(component)) {
-        remove(component);
-      }
-    }
+    children.where(test).toList(growable: false).forEach(_removeChild);
   }
 
   void _removeChild(Component child) {
@@ -632,7 +663,7 @@ class Component {
       "$this, component's parent = ${child._parent}",
     );
     if (isMounted) {
-      final root = findGame()! as ComponentTreeRoot;
+      final root = findGame()!;
       if (child.isMounted || child.isMounting) {
         if (!child.isRemoving) {
           root.enqueueRemove(child, this);
@@ -646,12 +677,6 @@ class Component {
       _children?.remove(child);
       child._parent = null;
     }
-  }
-
-  /// Changes the current parent for another parent and prepares the tree under
-  /// the new root.
-  void changeParent(Component newParent) {
-    parent = newParent;
   }
 
   //#endregion
@@ -699,23 +724,65 @@ class Component {
   Iterable<Component> componentsAtPoint(
     Vector2 point, [
     List<Vector2>? nestedPoints,
-  ]) sync* {
-    nestedPoints?.add(point);
+  ]) {
+    return componentsAtLocation<Vector2>(
+      point,
+      nestedPoints,
+      (transform, point) => transform.parentToLocal(point),
+      (component, point) => component.containsLocalPoint(point),
+    );
+  }
+
+  /// This is a generic implementation of [componentsAtPoint]; refer to those
+  /// docs for context.
+  ///
+  /// This will find components intersecting a given location context [T]. The
+  /// context can be a single point or a more complicated structure. How to
+  /// interpret the structure T is determined by the provided lambdas,
+  /// [transformContext] and [checkContains].
+  ///
+  /// A simple choice of T would be a simple point (i.e. Vector2). In that case
+  /// transformContext needs to be able to transform a Vector2 on the parent
+  /// coordinate space into the coordinate space of a provided
+  /// [CoordinateTransform]; and [checkContains] must be able to determine if
+  /// a given [Component] "contains" the Vector2 (the definition of "contains"
+  /// will vary and shall be determined by the nature of the chosen location
+  /// context [T]).
+  Iterable<Component> componentsAtLocation<T>(
+    T locationContext,
+    List<T>? nestedContexts,
+    T? Function(CoordinateTransform, T) transformContext,
+    bool Function(Component, T) checkContains,
+  ) sync* {
+    nestedContexts?.add(locationContext);
     if (_children != null) {
       for (final child in _children!.reversed()) {
-        Vector2? childPoint = point;
+        if (child is IgnoreEvents && child.ignoreEvents) {
+          continue;
+        }
+        T? childPoint = locationContext;
         if (child is CoordinateTransform) {
-          childPoint = (child as CoordinateTransform).parentToLocal(point);
+          childPoint = transformContext(
+            child as CoordinateTransform,
+            locationContext,
+          );
         }
         if (childPoint != null) {
-          yield* child.componentsAtPoint(childPoint, nestedPoints);
+          yield* child.componentsAtLocation(
+            childPoint,
+            nestedContexts,
+            transformContext,
+            checkContains,
+          );
         }
       }
     }
-    if (containsLocalPoint(point)) {
+    final shouldIgnoreEvents =
+        this is IgnoreEvents && (this as IgnoreEvents).ignoreEvents;
+    if (checkContains(this, locationContext) && !shouldIgnoreEvents) {
       yield this;
     }
-    nestedPoints?.removeLast();
+    nestedContexts?.removeLast();
   }
 
   //#endregion
@@ -743,23 +810,10 @@ class Component {
       _priority = newPriority;
       final game = findGame();
       if (game != null && _parent != null) {
-        (game as FlameGame).enqueueRebalance(_parent!);
+        game.enqueueRebalance(_parent!);
       }
     }
   }
-
-  /// Usually this is not something that the user would want to call since the
-  /// component list isn't re-ordered when it is called.
-  /// See FlameGame.changePriority instead.
-  @Deprecated('Will be removed in 1.8.0. Use priority setter instead.')
-  void changePriorityWithoutResorting(int priority) => _priority = priority;
-
-  /// Call this if any of this component's children priorities have changed
-  /// at runtime.
-  ///
-  /// This will call [ComponentSet.rebalanceAll] on the [children] ordered set.
-  @Deprecated('Will be removed in 1.8.0.')
-  void reorderChildren() => _children?.rebalanceAll();
 
   //#endregion
 
@@ -775,6 +829,12 @@ class Component {
     } else {
       if (parent.isMounted && !isLoading) {
         _startLoading();
+      } else if (parent.isRemoved) {
+        // This case happens when the child is added to a parent that is being
+        // removed in the same tick.
+        _parent = parent;
+        parent.children.add(this);
+        return LifecycleEventStatus.done;
       }
       return LifecycleEventStatus.block;
     }
@@ -842,8 +902,8 @@ class Component {
     assert(isLoaded && !isLoading);
     _setMountingBit();
     onGameResize(_parent!.findGame()!.canvasSize);
-    if (_parent is ReadonlySizeProvider) {
-      onParentResize((_parent! as ReadonlySizeProvider).size);
+    if (_parent is ReadOnlySizeProvider) {
+      onParentResize((_parent! as ReadOnlySizeProvider).size);
     }
     if (isRemoved) {
       _clearRemovedBit();
@@ -862,6 +922,13 @@ class Component {
     _reAddChildren();
     _parent!.onChildrenChanged(this, ChildrenChangeType.added);
     _clearMountingBit();
+
+    if (key != null) {
+      final currentGame = findGame();
+      if (currentGame is FlameGame) {
+        currentGame.registerKey(key!, this);
+      }
+    }
   }
 
   /// Used by [_reAddChildren].
@@ -887,20 +954,43 @@ class Component {
     }
   }
 
+  /// Used by the [FlameGame] to set the loaded state of the component, since
+  /// the game isn't going through the whole normal component life cycle.
+  @internal
+  void setLoaded() {
+    _setLoadedBit();
+    _loadCompleter?.complete();
+    _loadCompleter = null;
+  }
+
+  /// Used by the [FlameGame] to set the mounted state of the component, since
+  /// the game isn't going through the whole normal component life cycle.
   @internal
   void setMounted() {
-    _setLoadedBit();
     _setMountedBit();
+    _mountCompleter?.complete();
+    _mountCompleter = null;
     _reAddChildren();
+  }
+
+  /// Used by the [FlameGame] to set the removed state of the component, since
+  /// the game isn't going through the whole normal component life cycle.
+  @internal
+  void setRemoved() {
+    _setRemovedBit();
+    _removeCompleter?.complete();
+    _removeCompleter = null;
   }
 
   void _remove() {
     assert(_parent != null, 'Trying to remove a component with no parent');
+
     _parent!.children.remove(this);
     propagateToChildren(
       (Component component) {
         component
           ..onRemove()
+          .._unregisterKey()
           .._clearMountedBit()
           .._clearRemovingBit()
           .._setRemovedBit()
@@ -912,6 +1002,15 @@ class Component {
       },
       includeSelf: true,
     );
+  }
+
+  void _unregisterKey() {
+    if (key != null) {
+      final game = findGame();
+      if (game is FlameGame) {
+        game.unregisterKey(key!);
+      }
+    }
   }
 
   //#endregion
@@ -932,7 +1031,12 @@ class Component {
   /// How many decimal digits to print when displaying coordinates in the
   /// debug mode. Setting this to null will suppress all coordinates from
   /// the output.
-  int? get debugCoordinatesPrecision => 0;
+  int? debugCoordinatesPrecision = 0;
+
+  /// A key that can be used to identify this component in the tree.
+  ///
+  /// It can be used to retrieve this component from anywhere in the tree.
+  final ComponentKey? key;
 
   /// The color that the debug output should be rendered with.
   Color debugColor = const Color(0xFFFF00FF);
@@ -955,9 +1059,21 @@ class Component {
   /// Returns a [TextPaint] object with the [debugColor] set as color for the
   /// text.
   TextPaint get debugTextPaint {
+    final viewfinder = CameraComponent.currentCamera?.viewfinder;
+    final viewport = CameraComponent.currentCamera?.viewport;
+    final zoom = viewfinder?.zoom ?? 1.0;
+
+    final viewportScale = math.max(
+      viewport?.transform.scale.x ?? 1,
+      viewport?.transform.scale.y ?? 1,
+    );
+
     if (!_debugTextPaintCache.isCacheValid([debugColor])) {
       final textPaint = TextPaint(
-        style: TextStyle(color: debugColor, fontSize: 12),
+        style: TextStyle(
+          color: debugColor,
+          fontSize: 12 / zoom / viewportScale,
+        ),
       );
       _debugTextPaintCache.updateCache(textPaint, [debugColor]);
     }
@@ -965,29 +1081,6 @@ class Component {
   }
 
   void renderDebugMode(Canvas canvas) {}
-
-  //#endregion
-
-  //#region Legacy component placement overrides
-
-  /// What coordinate system this component should respect (i.e. should it
-  /// observe camera, viewport, or use the raw canvas).
-  ///
-  /// Do note that this currently only works if the component is added directly
-  /// to the root `FlameGame`.
-  PositionType positionType = PositionType.game;
-
-  @protected
-  Vector2 eventPosition(PositionInfo info) {
-    switch (positionType) {
-      case PositionType.game:
-        return info.eventPosition.game;
-      case PositionType.viewport:
-        return info.eventPosition.viewport;
-      case PositionType.widget:
-        return info.eventPosition.widget;
-    }
-  }
 
   //#endregion
 }

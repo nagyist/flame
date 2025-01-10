@@ -8,15 +8,11 @@ class PlayerComponent extends SpriteAnimationComponent
     with HasGameRef, CollisionCallbacks {
   late TimerComponent bulletCreator;
 
-  PlayerComponent()
-      : super(
-          size: Vector2(50, 75),
-          position: Vector2(100, 500),
-          anchor: Anchor.center,
-        );
+  PlayerComponent() : super(size: Vector2(50, 75), anchor: Anchor.center);
 
   @override
   Future<void> onLoad() async {
+    position = game.size / 2;
     add(CircleHitbox());
     add(
       bulletCreator = TimerComponent(
@@ -26,7 +22,7 @@ class PlayerComponent extends SpriteAnimationComponent
         onTick: _createBullet,
       ),
     );
-    animation = await gameRef.loadSpriteAnimation(
+    animation = await game.loadSpriteAnimation(
       'rogue_shooter/player.png',
       SpriteAnimationData.sequenced(
         stepTime: 0.2,
@@ -38,7 +34,7 @@ class PlayerComponent extends SpriteAnimationComponent
 
   final _bulletAngles = [0.5, 0.3, 0.0, -0.5, -0.3];
   void _createBullet() {
-    gameRef.addAll(
+    game.addAll(
       _bulletAngles.map(
         (angle) => BulletComponent(
           position: position + Vector2(0, -size.y / 2),
@@ -57,12 +53,15 @@ class PlayerComponent extends SpriteAnimationComponent
   }
 
   void takeHit() {
-    gameRef.add(ExplosionComponent(position: position));
+    game.add(ExplosionComponent(position: position));
   }
 
   @override
-  void onCollisionStart(Set<Vector2> points, PositionComponent other) {
-    super.onCollisionStart(points, other);
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
+    super.onCollisionStart(intersectionPoints, other);
     if (other is EnemyComponent) {
       other.takeHit();
     }

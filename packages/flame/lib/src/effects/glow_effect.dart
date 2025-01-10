@@ -11,16 +11,19 @@ import 'package:meta/meta.dart';
 /// same component also used incremental updates.
 @experimental
 class GlowEffect extends Effect with EffectTarget<PaintProvider> {
-  GlowEffect(this.strength, super.controller, {this.style = BlurStyle.outer});
+  GlowEffect(
+    this.strength,
+    super.controller, {
+    this.style = BlurStyle.outer,
+    super.key,
+  });
 
   final BlurStyle style;
   final double strength;
 
   @override
   void apply(double progress) {
-    final _value = strength * progress;
-
-    target.paint.maskFilter = MaskFilter.blur(style, _value);
+    target.paint.maskFilter = MaskFilter.blur(style, strength * progress);
   }
 
   @override

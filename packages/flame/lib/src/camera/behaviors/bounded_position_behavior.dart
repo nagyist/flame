@@ -23,6 +23,7 @@ class BoundedPositionBehavior extends Component {
     PositionProvider? target,
     double precision = 0.5,
     super.priority,
+    super.key,
   })  : assert(precision > 0, 'Precision must be positive: $precision'),
         _bounds = bounds,
         _target = target,
@@ -36,7 +37,9 @@ class BoundedPositionBehavior extends Component {
     _bounds = newBounds;
     if (!isValidPoint(_previousPosition)) {
       _previousPosition.setFrom(_bounds.center);
-      update(0);
+      if (_target != null) {
+        update(0);
+      }
     }
   }
 
@@ -60,7 +63,7 @@ class BoundedPositionBehavior extends Component {
       );
       _target = parent! as PositionProvider;
     }
-    if (isValidPoint(target.position)) {
+    if (_target != null && isValidPoint(target.position)) {
       _previousPosition.setFrom(target.position);
     } else {
       _previousPosition.setFrom(_bounds.center);

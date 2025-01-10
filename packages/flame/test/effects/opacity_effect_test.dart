@@ -21,7 +21,7 @@ class _CustomPaintComponent<T extends Object> extends Component
 enum _PaintTypes { paint1, paint2, paint3 }
 
 void main() {
-  const _epsilon = 0.004; // 1/255, since alpha only holds 8 bits
+  const epsilon = 0.004; // 1/255, since alpha only holds 8 bits
 
   group('OpacityEffect', () {
     testWithFlameGame('relative', (game) async {
@@ -33,17 +33,17 @@ void main() {
         OpacityEffect.by(0.4, EffectController(duration: 1)),
       );
       game.update(0);
-      expect(component.getOpacity(), 0.2);
+      expect(component.getOpacity(), closeTo(0.2, 0.00001));
       expect(component.children.length, 1);
 
       game.update(0.5);
-      expectDouble(component.getOpacity(), 0.4, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.4, epsilon: epsilon);
 
       game.update(0.5);
-      expectDouble(component.getOpacity(), 0.6, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.6, epsilon: epsilon);
       game.update(0);
       expect(component.children.length, 0);
-      expectDouble(component.getOpacity(), 0.6, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.6, epsilon: epsilon);
     });
 
     testWithFlameGame('absolute', (game) async {
@@ -55,17 +55,17 @@ void main() {
         OpacityEffect.to(0.4, EffectController(duration: 1)),
       );
       game.update(0);
-      expect(component.getOpacity(), 0.2);
+      expect(component.getOpacity(), closeTo(0.2, 0.00001));
       expect(component.children.length, 1);
 
       game.update(0.5);
-      expectDouble(component.getOpacity(), 0.3, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.3, epsilon: epsilon);
 
       game.update(0.5);
-      expectDouble(component.getOpacity(), 0.4, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.4, epsilon: epsilon);
       game.update(0);
       expect(component.children.length, 0);
-      expectDouble(component.getOpacity(), 0.4, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.4, epsilon: epsilon);
     });
 
     testWithFlameGame('reset relative', (game) async {
@@ -81,7 +81,7 @@ void main() {
       );
       component.add(effect..removeOnFinish = false);
       for (var i = 0; i < 5; i++) {
-        expectDouble(component.getOpacity(), 1.0 - step * i, epsilon: _epsilon);
+        expectDouble(component.getOpacity(), 1.0 - step * i, epsilon: epsilon);
         // After each reset the object will have its opacity modified by -10/255
         // relative to its opacity at the start of the effect.
         effect.reset();
@@ -89,7 +89,7 @@ void main() {
         expectDouble(
           component.getOpacity(),
           1.0 - step * (i + 1),
-          epsilon: _epsilon,
+          epsilon: epsilon,
         );
       }
     });
@@ -136,18 +136,18 @@ void main() {
       expectDouble(
         component.getOpacity(),
         0.55, // 0.5/10 + 0.5*1
-        epsilon: _epsilon,
+        epsilon: epsilon,
       );
       game.update(1);
       expectDouble(
         component.getOpacity(),
         0.1,
-        epsilon: _epsilon,
+        epsilon: epsilon,
       ); // 0.5*2/10 + 0.5*1 - 0.5*1
       for (var i = 0; i < 10; i++) {
         game.update(1);
       }
-      expectDouble(component.getOpacity(), 0.5, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 0.5, epsilon: epsilon);
       expect(component.children.length, 0);
     });
 
@@ -215,12 +215,12 @@ void main() {
 
         game.update(1);
 
-        expect(component.getPaint('bluePaint').color.opacity, isZero);
+        expect(component.getPaint('bluePaint').color.a, isZero);
 
-        // RGB components shouldn't be affected after opacity efffect.
-        expect(component.getPaint('bluePaint').color.blue, 255);
-        expect(component.getPaint('bluePaint').color.red, isZero);
-        expect(component.getPaint('bluePaint').color.green, isZero);
+        // RGB components shouldn't be affected after opacity effect.
+        expect(component.getPaint('bluePaint').color.b, 1.0);
+        expect(component.getPaint('bluePaint').color.r, isZero);
+        expect(component.getPaint('bluePaint').color.g, isZero);
       },
     );
 
@@ -242,10 +242,10 @@ void main() {
         game.update(1);
 
         // All paints should have the same opacity after the effect completes.
-        expect(component.getPaint().color.opacity, isZero);
-        expect(component.getPaint(_PaintTypes.paint1).color.opacity, isZero);
-        expect(component.getPaint(_PaintTypes.paint2).color.opacity, isZero);
-        expect(component.getPaint(_PaintTypes.paint3).color.opacity, isZero);
+        expect(component.getPaint().color.a, isZero);
+        expect(component.getPaint(_PaintTypes.paint1).color.a, isZero);
+        expect(component.getPaint(_PaintTypes.paint2).color.a, isZero);
+        expect(component.getPaint(_PaintTypes.paint3).color.a, isZero);
       },
     );
 
@@ -263,17 +263,17 @@ void main() {
               ..color = BasicPalette.green
                   .paint()
                   .color
-                  .withOpacity(redInitialOpacity),
+                  .withValues(alpha: redInitialOpacity),
             _PaintTypes.paint2: BasicPalette.green.paint()
               ..color = BasicPalette.green
                   .paint()
                   .color
-                  .withOpacity(greenInitialOpacity),
+                  .withValues(alpha: greenInitialOpacity),
             _PaintTypes.paint3: BasicPalette.blue.paint()
               ..color = BasicPalette.blue
                   .paint()
                   .color
-                  .withOpacity(blueInitialOpacity),
+                  .withValues(alpha: blueInitialOpacity),
           },
         );
         await game.ensureAdd(component);
@@ -289,15 +289,15 @@ void main() {
         game.update(1);
 
         expectDouble(
-          component.getPaint(_PaintTypes.paint1).color.opacity,
+          component.getPaint(_PaintTypes.paint1).color.a,
           redInitialOpacity * targetOpacity,
         );
         expectDouble(
-          component.getPaint(_PaintTypes.paint2).color.opacity,
+          component.getPaint(_PaintTypes.paint2).color.a,
           greenInitialOpacity * targetOpacity,
         );
         expectDouble(
-          component.getPaint(_PaintTypes.paint3).color.opacity,
+          component.getPaint(_PaintTypes.paint3).color.a,
           blueInitialOpacity * targetOpacity,
         );
       },
@@ -317,17 +317,17 @@ void main() {
               ..color = BasicPalette.green
                   .paint()
                   .color
-                  .withOpacity(redInitialOpacity),
+                  .withValues(alpha: redInitialOpacity),
             _PaintTypes.paint2: BasicPalette.green.paint()
               ..color = BasicPalette.green
                   .paint()
                   .color
-                  .withOpacity(greenInitialOpacity),
+                  .withValues(alpha: greenInitialOpacity),
             _PaintTypes.paint3: BasicPalette.blue.paint()
               ..color = BasicPalette.blue
                   .paint()
                   .color
-                  .withOpacity(blueInitialOpacity),
+                  .withValues(alpha: blueInitialOpacity),
           },
         );
         await game.ensureAdd(component);
@@ -344,17 +344,17 @@ void main() {
         game.update(1);
 
         expectDouble(
-          component.getPaint(_PaintTypes.paint1).color.opacity,
+          component.getPaint(_PaintTypes.paint1).color.a,
           targetOpacity,
         );
         expectDouble(
-          component.getPaint(_PaintTypes.paint2).color.opacity,
+          component.getPaint(_PaintTypes.paint2).color.a,
           (greenInitialOpacity / redInitialOpacity) * targetOpacity,
         );
 
         // Opacity of this paint shouldn't be changed.
         expectDouble(
-          component.getPaint(_PaintTypes.paint3).color.opacity,
+          component.getPaint(_PaintTypes.paint3).color.a,
           blueInitialOpacity,
         );
       },
@@ -381,7 +381,7 @@ void main() {
         game.update(dt);
       }
       game.update(1000 - totalTime);
-      expectDouble(component.getOpacity(), 1.0, epsilon: _epsilon);
+      expectDouble(component.getOpacity(), 1.0, epsilon: epsilon);
     });
   });
 }

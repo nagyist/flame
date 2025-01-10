@@ -1,4 +1,11 @@
 <!-- markdownlint-disable MD013 -->
+<p align="right">
+  <a href="https://docs.flutter.dev/packages-and-plugins/favorites">
+    <img alt="Flutter favorite" width="100px" src="https://github.com/flame-engine/flame/assets/744771/aa5d5acd-e82b-48bc-ad81-2ab146d72ecb">
+  </a>
+</p>
+
+<!-- markdownlint-disable MD013 -->
 <p align="center">
   <a href="https://flame-engine.org">
     <img alt="flame" width="200px" src="https://user-images.githubusercontent.com/6718144/101553774-3bc7b000-39ad-11eb-8a6a-de2daa31bd64.png">
@@ -14,6 +21,7 @@ A Flutter-based game engine.
   <a title="Test" href="https://github.com/flame-engine/flame/actions?query=workflow%3Acicd+branch%3Amain"><img src="https://github.com/flame-engine/flame/workflows/cicd/badge.svg?branch=main&event=push"/></a>
   <a title="Discord" href="https://discord.gg/pxrBmy4"><img src="https://img.shields.io/discord/509714518008528896.svg"/></a>
   <a title="Melos" href="https://github.com/invertase/melos"><img src="https://img.shields.io/badge/maintained%20with-melos-f700ff.svg"/></a>
+  <a title="AI Assist" href="https://app.commanddash.io/agent/flame_engine"><img src="https://img.shields.io/badge/AI-Code%20Assist-EB9FDA.svg"></a>
 </p>
 
 ---
@@ -76,26 +84,22 @@ helpers, in order to make integrations seamless.
 
 Flame officially provides bridge libraries to the following packages:
 
-- [flame_audio](https://github.com/flame-engine/flame/tree/main/packages/flame_audio) for
-  [AudioPlayers](https://github.com/bluefireteam/audioplayers): Play multiple audio files
-  simultaneously.
-- [flame_bloc](https://github.com/flame-engine/flame/tree/main/packages/flame_bloc) for
-  [Bloc](https://github.com/felangel/bloc): A predictable state management library.
-- [flame_fire_atlas](https://github.com/flame-engine/flame/tree/main/packages/flame_fire_atlas) for
-  [FireAtlas](https://github.com/flame-engine/fire-atlas): Create texture atlases for games.
-- [flame_forge2d](https://github.com/flame-engine/flame/tree/main/packages/flame_forge2d) for
-  [Forge2D](https://github.com/flame-engine/forge2d): A Box2D physics engine.
-- [flame_lint](https://github.com/flame-engine/flame/tree/main/packages/flame_lint) -
-  Our set of linting (`analysis_options.yaml`) rules.
-- [flame_oxygen](https://github.com/flame-engine/flame/tree/main/packages/flame_oxygen) for
-  [Oxygen](https://github.com/flame-engine/oxygen): A lightweight Entity Component System (ECS)
-  framework.
-- [flame_rive](https://github.com/flame-engine/flame/tree/main/packages/flame_rive) for
-  [Rive](https://rive.app/): Create interactive animations.
-- [flame_svg](https://github.com/flame-engine/flame/tree/main/packages/flame_svg) for
-  [flutter_svg](https://github.com/dnfield/flutter_svg): Draw SVG files in Flutter.
-- [flame_tiled](https://github.com/flame-engine/flame/tree/main/packages/flame_tiled) for
-  [Tiled](https://www.mapeditor.org/): 2D tile map level editor.
+- [flame_audio][flame_audio] for [AudioPlayers][audioplayers]: Play multiple audio files
+simultaneously.
+- [flame_bloc][flame_bloc] for [Bloc][bloc]: A predictable state management library.
+- [flame_fire_atlas][flame_fire_atlas] for [FireAtlas][fireatlas]: Create texture atlases for games.
+- [flame_forge2d][flame_forge2d] for [Forge2D][forge2d]: A Box2D physics engine.
+- [flame_isolate][flame_isolate] - Makes it easy to use [Flutter Isolates][flutter_isolates] in
+a Flame game.
+- [flame_lint][flame_lint] - Our set of linting (`analysis_options.yaml`) rules.
+- [flame_lottie][flame_lottie] - Support for [Lottie][lottie] animation in Flame.
+- [flame_network_assets][flame_network_assets] - Helpers to load game assets from
+network.
+- [flame_oxygen][flame_oxygen] for [Oxygen][oxygen]: A lightweight Entity Component System (ECS)
+framework.
+- [flame_rive][flame_rive] for [Rive][rive]: Create interactive animations.
+- [flame_svg][flame_svg] for [flutter_svg][flutter_svg]: Draw SVG files in Flutter.
+- [flame_tiled][flame_tiled] for [Tiled][tiled]: 2D tile map level editor.
 
 
 ## Sponsors
@@ -113,21 +117,28 @@ in the section below, or contact us on [Discord](https://discord.gg/pxrBmy4).
 
 ## Support
 
-The simplest way to show us your support is by giving the project a star.
+The simplest way to show us your support is by giving the project a star! :star:
 
 You can also support us monetarily by donating through OpenCollective:
 
 <a href="https://opencollective.com/blue-fire/donate" target="_blank">
-  <img src="https://opencollective.com/blue-fire/donate/button@2x.png?color=blue" width=300 />
+  <img src="https://opencollective.com/blue-fire/donate/button@2x.png?color=blue" width=200 />
 </a>
 
-Or through GitHub sponsors:
+Through GitHub Sponsors:
 
-[![GitHub Badge](https://img.shields.io/badge/Github%20Sponsor-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/bluefireteam)
+<a href="https://github.com/sponsors/bluefireteam" target="_blank">
+  <img
+    src="https://img.shields.io/badge/Github%20Sponsor-blue?style=for-the-badge&logo=github&logoColor=white"
+    width=200
+  />
+</a>
 
 Or by becoming a patron on Patreon:
 
-[![Patreon](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/bluefireoss)
+<a href="https://www.patreon.com/bluefireoss" target="_blank">
+  <img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" width=200 />
+</a>
 
 You can also show on your repository that your game is made with Flame by using one of the following
 badges:
@@ -152,6 +163,8 @@ Do you want to contribute with a PR? PRs are always welcome, just make sure to c
 correct branch (main) and follow the [checklist](.github/pull_request_template.md) which will
 appear when you open the PR.
 
+Also, before you start, make sure to read our [Contributing Guide](CONTRIBUTING.md).
+
 For bigger changes, or if in doubt, make sure to talk about your contribution to the team. Either
 via an issue, GitHub discussion, or reach out to the team either using the
 [Discord server](https://discord.gg/pxrBmy4).
@@ -162,3 +175,26 @@ via an issue, GitHub discussion, or reach out to the team either using the
 - The [Blue Fire team](https://github.com/orgs/bluefireteam/people), who are continuously
   working on maintaining and improving Flame and its ecosystem.
 - All the friendly contributors and people who are helping out in the community.
+
+[flame_audio]: https://github.com/flame-engine/flame/tree/main/packages/flame_audio
+[audioplayers]: https://github.com/bluefireteam/audioplayers
+[flame_bloc]: https://github.com/flame-engine/flame/tree/main/packages/flame_bloc
+[bloc]: https://github.com/felangel/bloc
+[flame_fire_atlas]: https://github.com/flame-engine/flame/tree/main/packages/flame_fire_atlas
+[fireatlas]: https://github.com/flame-engine/fire-atlas
+[flame_forge2d]: https://github.com/flame-engine/flame/tree/main/packages/flame_forge2d
+[forge2d]: https://github.com/flame-engine/forge2d
+[flame_isolate]: https://github.com/flame-engine/flame/tree/main/packages/flame_isolate
+[flutter_isolates]: https://api.flutter.dev/flutter/dart-isolate/Isolate-class.html
+[flame_lint]: https://github.com/flame-engine/flame/tree/main/packages/flame_lint
+[flame_lottie]: https://github.com/flame-engine/flame/tree/main/packages/flame_lottie
+[lottie]: https://airbnb.design/lottie/
+[flame_network_assets]: https://github.com/flame-engine/flame/tree/main/packages/flame_network_assets
+[flame_oxygen]: https://github.com/flame-engine/flame/tree/main/packages/flame_oxygen
+[oxygen]: https://github.com/flame-engine/oxygen
+[flame_rive]: https://github.com/flame-engine/flame/tree/main/packages/flame_rive
+[rive]: https://rive.app/
+[flame_svg]: https://github.com/flame-engine/flame/tree/main/packages/flame_svg
+[flutter_svg]: https://github.com/dnfield/flutter_svg
+[flame_tiled]: https://github.com/flame-engine/flame/tree/main/packages/flame_tiled
+[tiled]: https://www.mapeditor.org/

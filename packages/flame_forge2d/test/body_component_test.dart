@@ -1,4 +1,12 @@
+// ignore_for_file: invalid_use_of_internal_member
+
+import 'dart:math';
+
+import 'package:flame/components.dart'
+    show Anchor, ComponentKey, PositionComponent;
+import 'package:flame/events.dart';
 import 'package:flame/extensions.dart';
+import 'package:flame/src/events/flame_game_mixins/multi_tap_dispatcher.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter/material.dart';
@@ -7,12 +15,19 @@ import 'package:mocktail/mocktail.dart';
 
 import 'helpers/mocks.dart';
 
-class _TestBodyComponent extends BodyComponent {
+class _TestBodyComponent extends BodyComponent with TapCallbacks {
+  int tapCount = 0;
+
   @override
   Body createBody() => body;
 
   @override
   void noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  void onTapDown(TapDownEvent _) {
+    tapCount++;
+  }
 }
 
 class _MockCanvas extends Mock implements Canvas {}
@@ -50,18 +65,9 @@ void main() {
             final component = _TestBodyComponent()
               ..body = body
               ..paint = testPaint;
-            await game.add(component);
+            await game.world.add(component);
 
-            game.camera.followVector2(Vector2.zero());
-
-            // a CircleShape contains point
-            expect(component.containsPoint(Vector2.all(1.5)), isTrue);
-          },
-          verify: (game, tester) async {
-            await expectLater(
-              find.byGame<Forge2DGame>(),
-              matchesGoldenFile(goldenPath('circle_shape')),
-            );
+            game.camera.follow(component);
           },
         );
 
@@ -79,9 +85,9 @@ void main() {
             final component = _TestBodyComponent()
               ..body = body
               ..paint = testPaint;
-            await game.add(component);
+            await game.world.add(component);
 
-            game.camera.followVector2(Vector2.zero());
+            game.camera.follow(component);
           },
           verify: (game, tester) async {
             await expectLater(
@@ -108,9 +114,9 @@ void main() {
             final component = _TestBodyComponent()
               ..body = body
               ..paint = testPaint;
-            await game.add(component);
+            await game.world.add(component);
 
-            game.camera.followVector2(Vector2.zero());
+            game.camera.follow(component);
 
             // a PolygonShape contains point
             expect(component.containsPoint(Vector2.all(10)), isTrue);
@@ -140,9 +146,9 @@ void main() {
             final component = _TestBodyComponent()
               ..body = body
               ..paint = testPaint;
-            await game.add(component);
+            await game.world.add(component);
 
-            game.camera.followVector2(Vector2.zero());
+            game.camera.follow(component);
           },
           verify: (game, tester) async {
             await expectLater(
@@ -169,9 +175,9 @@ void main() {
             final component = _TestBodyComponent()
               ..body = body
               ..paint = testPaint;
-            await game.add(component);
+            await game.world.add(component);
 
-            game.camera.followVector2(Vector2.zero());
+            game.camera.follow(component);
           },
           verify: (game, tester) async {
             await expectLater(
@@ -184,7 +190,7 @@ void main() {
     });
 
     group('renderFixture', () {
-      group('returs normally', () {
+      group('returns normally', () {
         late Canvas canvas;
         late Body body;
 
@@ -273,10 +279,7 @@ void main() {
       flameTester.testGameWidget(
         'add and remove child to BodyComponent',
         setUp: (game, tester) async {
-          final worldCenter =
-              game.screenToWorld(game.size * game.camera.zoom / 2);
-
-          final bodyDef = BodyDef(position: worldCenter.clone());
+          final bodyDef = BodyDef();
           final body = game.world.createBody(bodyDef);
           final shape = PolygonShape()
             ..set(
@@ -292,18 +295,18 @@ void main() {
             ..body = body
             ..paint = testPaint;
 
-          component.addToParent(game);
+          game.world.add(component);
           await game.ready();
 
-          expect(game.contains(component), true);
+          expect(game.world.contains(component), true);
           expect(component.isMounted, true);
-          expect(game.children.length, 1);
+          expect(game.world.children.length, 1);
           component.removeFromParent();
           await game.ready();
 
           expect(component.isMounted, false);
           expect(component.isLoaded, true);
-          expect(game.children.length, 0);
+          expect(game.world.children.length, 0);
         },
       );
     });
@@ -321,6 +324,161 @@ void main() {
         verify(
           () => contactCallback.beginContact(fixtureA.userData!, contact),
         ).called(1);
+      });
+    });
+
+    group('PositionComponent parented by BodyComponent', () {
+      final flameTester = FlameTester(Forge2DGame.new);
+
+      flameTester.testGameWidget(
+        'absoluteAngle',
+        setUp: (game, tester) async {
+          // Creates a body with an angle of 2 radians
+          final body = game.world.createBody(BodyDef(angle: 2.0));
+          final shape = EdgeShape()
+            ..set(
+              Vector2.zero(),
+              Vector2.all(10),
+            );
+          body.createFixture(FixtureDef(shape));
+          final bodyComponent = _TestBodyComponent()..body = body;
+
+          // Creates a positional component with an angle of 1 radians
+          final positionComponent = PositionComponent(angle: 1.0);
+
+          // Creates a hierarchy: game > bodyComponent > positionComponent
+          game.world.add(bodyComponent);
+          bodyComponent.add(positionComponent);
+
+          await game.ready();
+
+          // Checks the hierarchy
+          expect(game.world.contains(bodyComponent), true);
+          expect(bodyComponent.contains(positionComponent), true);
+          expect(game.world.children.length, 1);
+          expect(bodyComponent.children.length, 1);
+          expect(positionComponent.children.length, 0);
+
+          // Expects the absolute angle to be (2 + 1) radians
+          expect(positionComponent.absoluteAngle, 3.0);
+        },
+      );
+    });
+
+    group('createBody', () {
+      test('should throw an error if bodyDef is null', () {
+        final bodyComponent = BodyComponent();
+        expect(bodyComponent.createBody, throwsAssertionError);
+      });
+
+      group('should create body', () {
+        final flameTester = FlameTester(Forge2DGame.new);
+
+        flameTester.testGameWidget(
+          'with no fixtures',
+          setUp: (game, tester) async {
+            final bodyComponent = BodyComponent(
+              bodyDef: BodyDef(position: Vector2(33, 44)),
+              key: ComponentKey.named('tested'),
+            );
+            game.world.add(bodyComponent);
+          },
+          verify: (game, tester) async {
+            expect(
+              game.findByKeyName<BodyComponent>('tested')!.body.position,
+              Vector2(33, 44),
+            );
+          },
+        );
+
+        flameTester.testGameWidget(
+          'with a set of fixtures',
+          setUp: (game, tester) async {
+            final bodyComponent = BodyComponent(
+              bodyDef: BodyDef(),
+              fixtureDefs: [
+                FixtureDef(CircleShape()..radius = 10),
+                FixtureDef(CircleShape()..radius = 20),
+                FixtureDef(CircleShape()..radius = 30),
+              ],
+              key: ComponentKey.named('tested'),
+            );
+            game.world.add(bodyComponent);
+          },
+          verify: (game, tester) async {
+            final bodyComponent = game.findByKeyName<BodyComponent>('tested')!;
+            expect(bodyComponent.body.fixtures[0].shape.radius, 10);
+            expect(bodyComponent.body.fixtures[1].shape.radius, 20);
+            expect(bodyComponent.body.fixtures[2].shape.radius, 30);
+          },
+        );
+      });
+    });
+
+    group('containsLocalPoint', () {
+      testWithGame('with rotation', Forge2DGame.new, (game) async {
+        game.camera.viewfinder.anchor = Anchor.topLeft;
+        final zoom = game.camera.viewfinder.zoom;
+        final position = Vector2.all(10);
+        final body = game.world.createBody(
+          BodyDef(position: position, angle: pi / 2),
+        );
+
+        body.createFixtureFromShape(
+          CircleShape()
+            ..radius = 1
+            ..position.setFrom(Vector2(3, 0)),
+        );
+        body.createFixtureFromShape(
+          CircleShape()
+            ..radius = 1
+            ..position.setFrom(Vector2(-3, 0)),
+        );
+        final component = _TestBodyComponent()..body = body;
+
+        await game.world.ensureAdd(component);
+        game.update(0);
+        final tapDispatcher = game.firstChild<MultiTapDispatcher>()!;
+
+        tapDispatcher.handleTapDown(
+          1,
+          TapDownDetails(
+            globalPosition: position.toOffset() * zoom + Offset(0, 3 * zoom),
+          ),
+        );
+        expect(component.tapCount, 1);
+
+        tapDispatcher.handleTapDown(
+          1,
+          TapDownDetails(
+            globalPosition: position.toOffset() * zoom + Offset(3 * zoom, 0),
+          ),
+        );
+        expect(component.tapCount, 1);
+
+        tapDispatcher.handleTapDown(
+          1,
+          TapDownDetails(
+            globalPosition: position.toOffset() * zoom + Offset(0, -3 * zoom),
+          ),
+        );
+        expect(component.tapCount, 2);
+
+        tapDispatcher.handleTapDown(
+          1,
+          TapDownDetails(
+            globalPosition: position.toOffset() * zoom + Offset(-3 * zoom, 0),
+          ),
+        );
+        expect(component.tapCount, 2);
+
+        tapDispatcher.handleTapDown(
+          1,
+          TapDownDetails(
+            globalPosition: position.toOffset() * zoom,
+          ),
+        );
+        expect(component.tapCount, 2);
       });
     });
   });

@@ -1,11 +1,13 @@
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flame/extensions.dart';
 import 'package:flame_test/flame_test.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-final output = List.filled(8 * 8 * 4, 255);
+final _output = List.filled(8 * 8 * 4, 255);
 
 void main() {
   group('ImageExtension', () {
@@ -20,7 +22,7 @@ void main() {
       final image = await ImageExtension.fromPixels(data, 8, 8);
       final bytes = await image.toByteData();
 
-      expect(bytes!.buffer.asUint8List(), equals(output));
+      expect(bytes!.buffer.asUint8List(), equals(_output));
     });
 
     test('pixelsInUint8', () async {
@@ -32,7 +34,7 @@ void main() {
         data[i + 3] = 255;
       }
       final image = await ImageExtension.fromPixels(data, 8, 8);
-      expect(await image.pixelsInUint8(), equals(output));
+      expect(await image.pixelsInUint8(), equals(_output));
     });
 
     testRandom('getBoundingRect', (Random r) async {
@@ -52,104 +54,90 @@ void main() {
     });
 
     test('darken colors each pixel darker', () async {
-      const orignalColor = Color.fromARGB(193, 135, 73, 73);
+      const transparentColor = Color.fromARGB(0, 255, 0, 255);
+      const originalColor = Color.fromARGB(255, 135, 73, 73);
       final pixels = Uint8List.fromList(
         List<int>.generate(
           100 * 4,
-          (index) {
-            switch (index % 4) {
-              case 0:
-                return orignalColor.red;
-              case 1:
-                return orignalColor.green;
-              case 2:
-                return orignalColor.blue;
-              case 3:
-                return orignalColor.alpha;
-              default:
-                throw 'No 4 in switch % 4';
-            }
-          },
+          (index) => _colorBit(
+            index,
+            index < 200 ? transparentColor : originalColor,
+          ),
         ),
       );
       final image = await ImageExtension.fromPixels(pixels, 10, 10);
 
-      const darkenAmout = 0.5;
-      final orignalDarkenImage = await image.darken(darkenAmout);
-      final orignalDarkenPixelsList = await orignalDarkenImage.pixelsInUint8();
+      const darkenAmount = 0.5;
+      final actualDarkenedImage = await image.darken(darkenAmount);
+      final actualDarkenedPixels = await actualDarkenedImage.pixelsInUint8();
 
-      final darkenColor = orignalColor.darken(darkenAmout);
+      final darkenedColor = originalColor.darken(darkenAmount);
       final expectedDarkenPixels = Uint8List.fromList(
         List<int>.generate(
           100 * 4,
-          (index) {
-            switch (index % 4) {
-              case 0:
-                return darkenColor.red;
-              case 1:
-                return darkenColor.green;
-              case 2:
-                return darkenColor.blue;
-              case 3:
-                return darkenColor.alpha;
-              default:
-                throw 'No 4 in switch % 4';
-            }
-          },
+          (index) => _colorBit(
+            index,
+            index < 200 ? transparentColor : darkenedColor,
+          ),
         ),
       );
-      expect(orignalDarkenPixelsList, expectedDarkenPixels);
+      expect(actualDarkenedPixels, expectedDarkenPixels);
     });
 
     test('brighten colors each pixel brighter', () async {
-      const orignalColor = Color.fromARGB(193, 135, 73, 73);
+      const transparentColor = Color.fromARGB(0, 255, 0, 255);
+      const originalColor = Color.fromARGB(255, 255, 0, 0);
+
       final pixels = Uint8List.fromList(
         List<int>.generate(
           100 * 4,
-          (index) {
-            switch (index % 4) {
-              case 0:
-                return orignalColor.red;
-              case 1:
-                return orignalColor.green;
-              case 2:
-                return orignalColor.blue;
-              case 3:
-                return orignalColor.alpha;
-              default:
-                throw 'No 4 in switch % 4';
-            }
-          },
+          (index) => _colorBit(
+            index,
+            index < 200 ? transparentColor : originalColor,
+          ),
         ),
       );
       final image = await ImageExtension.fromPixels(pixels, 10, 10);
 
-      const brightenAmout = 0.5;
-      final orignalBrightenImage = await image.brighten(brightenAmout);
-      final orignalBrightenPixelsList =
-          await orignalBrightenImage.pixelsInUint8();
+      const brightenAmount = 0.5;
+      final brightenedImage = await image.brighten(brightenAmount);
+      final actualBrightenedPixels = await brightenedImage.pixelsInUint8();
 
-      final brightenColor = orignalColor.brighten(brightenAmout);
+      final brightenColor = originalColor.brighten(brightenAmount);
       final expectedBrightenPixels = Uint8List.fromList(
         List<int>.generate(
           100 * 4,
-          (index) {
-            switch (index % 4) {
-              case 0:
-                return brightenColor.red;
-              case 1:
-                return brightenColor.green;
-              case 2:
-                return brightenColor.blue;
-              case 3:
-                return brightenColor.alpha;
-              default:
-                throw 'No 4 in switch % 4';
-            }
-          },
+          (index) => _colorBit(
+            index,
+            index < 200 ? transparentColor : brightenColor,
+          ),
         ),
       );
-      expect(orignalBrightenPixelsList, expectedBrightenPixels);
+      expect(actualBrightenedPixels, expectedBrightenPixels);
+    });
+
+    test('resize resizes the image', () async {
+      final recorder = PictureRecorder();
+      Canvas(recorder).drawRect(
+        const Rect.fromLTWH(0, 0, 100, 100),
+        Paint()..color = Colors.white,
+      );
+      final pic = recorder.endRecording();
+      final image = await pic.toImage(100, 100);
+
+      final resizedImage = await image.resize(Vector2(200, 400));
+      expect(resizedImage.width, equals(200));
+      expect(resizedImage.height, equals(400));
     });
   });
+}
+
+int _colorBit(int index, Color color) {
+  return switch (index % 4) {
+    0 => (color.r * 255).round(),
+    1 => (color.g * 255).round(),
+    2 => (color.b * 255).round(),
+    3 => (color.a * 255).round(),
+    _ => throw UnimplementedError(),
+  };
 }

@@ -8,8 +8,7 @@
 - [Platforms](platforms.md)
 - [Collision Detection](collision_detection.md)
 - [Effects](effects.md)
-- [Camera & Viewport](camera_and_viewport.md)
-- [Camera Component](camera_component.md)
+- [Camera](camera.md)
 - [Inputs](inputs/inputs.md)
 - [Rendering](rendering/rendering.md)
 - [Layout](layout/layout.md)
@@ -19,16 +18,15 @@
 ```{toctree}
 :hidden:
 
-File Structure       <structure.md>
 Game Widget          <game_widget.md>
 Game Loop            <game.md>
 Components           <components.md>
+Camera               <camera.md>
+Assets Structure     <structure.md>
 Router               <router.md>
 Platforms            <platforms.md>
 Collision Detection  <collision_detection.md>
 Effects              <effects.md>
-Camera & Viewport    <camera_and_viewport.md>
-Camera Component     <camera_component.md>
 Inputs               <inputs/inputs.md>
 Rendering            <rendering/rendering.md>
 Layout               <layout/layout.md>

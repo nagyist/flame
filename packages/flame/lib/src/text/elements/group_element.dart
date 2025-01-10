@@ -1,6 +1,5 @@
-import 'package:flame/src/text/elements/block_element.dart';
-import 'package:flame/src/text/elements/element.dart';
-import 'package:flutter/rendering.dart' hide TextStyle;
+import 'package:flame/extensions.dart';
+import 'package:flame/text.dart';
 
 class GroupElement extends BlockElement {
   GroupElement({
@@ -9,7 +8,7 @@ class GroupElement extends BlockElement {
     required this.children,
   }) : super(width, height);
 
-  final List<Element> children;
+  final List<TextElement> children;
 
   @override
   void translate(double dx, double dy) {
@@ -17,7 +16,19 @@ class GroupElement extends BlockElement {
   }
 
   @override
-  void render(Canvas canvas) {
-    children.forEach((child) => child.render(canvas));
+  void draw(Canvas canvas) {
+    children.forEach((child) => child.draw(canvas));
+  }
+
+  @override
+  Rect get boundingBox {
+    return children.fold<Rect?>(
+          null,
+          (previousValue, element) {
+            final box = element.boundingBox;
+            return previousValue?.expandToInclude(box) ?? box;
+          },
+        ) ??
+        Rect.zero;
   }
 }

@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class SvgPainter extends CustomPainter {
+class _SvgPainter extends CustomPainter {
   final flame_svg.Svg svg;
 
-  SvgPainter(this.svg);
+  _SvgPainter(this.svg);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -23,7 +23,7 @@ class SvgPainter extends CustomPainter {
   }
 }
 
-Future<flame_svg.Svg> parseSvgFromTestFile(String path) async {
+Future<flame_svg.Svg> _parseSvgFromTestFile(String path) async {
   final svgString = File(path).readAsStringSync();
   final pictureInfo = await vg.loadPicture(SvgStringLoader(svgString), null);
   return flame_svg.Svg(pictureInfo);
@@ -34,7 +34,7 @@ void main() {
     late flame_svg.Svg svgInstance;
 
     setUp(() async {
-      svgInstance = await parseSvgFromTestFile('test/_resources/android.svg');
+      svgInstance = await _parseSvgFromTestFile('test/_resources/android.svg');
     });
 
     test('multiple calls to dispose should not throw error', () async {
@@ -44,13 +44,22 @@ void main() {
       svgInstance.dispose();
     });
 
+    test('load from svg string', () async {
+      final svg = await flame_svg.Svg.loadFromString(
+        File('test/_resources/android.svg').readAsStringSync(),
+      );
+      expect(svg, isNotNull);
+    });
+
     testWidgets(
       'render sharply',
       (tester) async {
-        final flameSvg = await parseSvgFromTestFile('test/_resources/hand.svg');
+        final flameSvg = await _parseSvgFromTestFile(
+          'test/_resources/hand.svg',
+        );
         flameSvg.render(Canvas(PictureRecorder()), Vector2.all(300));
         await tester.binding.setSurfaceSize(const Size(800, 600));
-        tester.binding.window.devicePixelRatioTestValue = 3;
+        tester.view.devicePixelRatio = 3;
         await tester.pumpWidget(
           MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -69,9 +78,9 @@ void main() {
                   Expanded(
                     child: CustomPaint(
                       size: const Size(300, 300),
-                      painter: SvgPainter(flameSvg),
+                      painter: _SvgPainter(flameSvg),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),

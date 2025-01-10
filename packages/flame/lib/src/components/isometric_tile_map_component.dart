@@ -1,7 +1,8 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flame/src/spritesheet.dart';
+import 'package:flame/src/sprite_sheet.dart';
 import 'package:meta/meta.dart';
 
 /// This is just a pair of <int, int>.
@@ -9,8 +10,11 @@ import 'package:meta/meta.dart';
 /// Represents a position in a matrix, or in this case, on the tilemap.
 @immutable
 class Block {
-  /// x and y coordinates on the matrix
-  final int x, y;
+  /// x coordinate in the matrix.
+  final int x;
+
+  /// y coordinate in the matrix.
+  final int y;
 
   const Block(this.x, this.y);
 
@@ -51,6 +55,13 @@ class IsometricTileMapComponent extends PositionComponent {
   /// Note: this must be measured in the destination space.
   double? tileHeight;
 
+  /// Where the tileset's image is stored.
+  Sprite _renderSprite;
+
+  /// Displacement applied so that the origin of the component
+  /// matches the origin of the AABB.
+  final Vector2 _offset = Vector2.zero();
+
   IsometricTileMapComponent(
     this.tileset,
     this.matrix, {
@@ -63,7 +74,10 @@ class IsometricTileMapComponent extends PositionComponent {
     super.anchor,
     super.children,
     super.priority,
-  }) : _renderSprite = Sprite(tileset.image);
+    super.key,
+  }) : _renderSprite = Sprite(tileset.image) {
+    _recomputeSizeAndOffset();
+  }
 
   /// This is the size the tiles will be drawn (either original or overwritten).
   Vector2 get effectiveTileSize => destTileSize ?? tileset.srcSize;
@@ -75,25 +89,28 @@ class IsometricTileMapComponent extends PositionComponent {
   /// tile size.
   double get effectiveTileHeight => tileHeight ?? (effectiveTileSize.y / 2);
 
-  Sprite _renderSprite;
   @override
-  void render(Canvas c) {
-    _renderSprite.image = tileset.image;
+  void render(Canvas canvas) {
     final size = effectiveTileSize;
     for (var i = 0; i < matrix.length; i++) {
       for (var j = 0; j < matrix[i].length; j++) {
         final element = matrix[i][j];
         if (element != -1) {
           _renderSprite = tileset.getSpriteById(element);
-          final p = getBlockRenderPositionInts(j, i);
+          final blockPosition = getBlockRenderPositionInts(j, i);
           _renderSprite.render(
-            c,
-            position: p,
+            canvas,
+            position: blockPosition,
             size: size,
           );
         }
       }
     }
+  }
+
+  @override
+  void update(double dt) {
+    _recomputeSizeAndOffset();
   }
 
   /// Get the position in which a block is rendered in, in the isometric space.
@@ -105,14 +122,23 @@ class IsometricTileMapComponent extends PositionComponent {
     return getBlockRenderPositionInts(block.x, block.y);
   }
 
+  final Vector2 _blockRenderPositionCache = Vector2.zero();
+  final Vector2 _cartesianPositionCache = Vector2.zero();
+
   /// Same as getBlockRenderPosition but the arguments are exploded as integers.
   Vector2 getBlockRenderPositionInts(int i, int j) {
-    final halfTile = Vector2(
-      effectiveTileSize.x / 2,
-      (effectiveTileSize.y / 2) / scalingFactor,
-    )..multiply(scale);
-    final pos = Vector2(i.toDouble(), j.toDouble())..multiply(halfTile);
-    return cartToIso(pos) - halfTile;
+    final halfTile = _blockRenderPositionCache
+      ..setValues(
+        effectiveTileSize.x / 2,
+        (effectiveTileSize.y / 2) / scalingFactor,
+      )
+      ..multiply(scale);
+    final cartesianPosition = _cartesianPositionCache
+      ..setValues(i.toDouble(), j.toDouble())
+      ..multiply(halfTile);
+    return cartToIso(cartesianPosition)
+      ..add(_offset)
+      ..sub(halfTile);
   }
 
   /// Get the position of the center of the surface of the isometric tile in
@@ -121,10 +147,11 @@ class IsometricTileMapComponent extends PositionComponent {
   /// This is the opposite of [getBlock].
   Vector2 getBlockCenterPosition(Block block) {
     final tile = effectiveTileSize;
-    final result = getBlockRenderPosition(block) +
-        (Vector2(tile.x / 2, tile.y - effectiveTileHeight - tile.y / 4)
-          ..multiply(scale));
-    return result;
+    return getBlockRenderPosition(block)
+      ..translate(
+        (tile.x / 2) * scale.x,
+        (tile.y - effectiveTileHeight - tile.y / 4) * scale.y,
+      );
   }
 
   /// Converts a coordinate from the isometric space to the cartesian space.
@@ -141,19 +168,30 @@ class IsometricTileMapComponent extends PositionComponent {
     return Vector2(x, y);
   }
 
+  final Vector2 _getBlockCache = Vector2.zero();
+  final Vector2 _getBlockIsoCache = Vector2.zero();
+
   /// Get which block's surface is at isometric position [p].
   ///
   /// This can be used to handle clicks or hovers.
   /// This is the opposite of [getBlockCenterPosition].
   Block getBlock(Vector2 p) {
-    final halfTile = (effectiveTileSize / 2)..multiply(scale);
+    final halfTile = _getBlockCache
+      ..setFrom(effectiveTileSize)
+      ..multiply(scale / 2);
     final multiplier = 1 - halfTile.y / (2 * effectiveTileHeight * scale.x);
-    final delta = halfTile.clone()..multiply(Vector2(1, multiplier));
-    final cart = isoToCart(p - position + delta);
+    final iso = _getBlockIsoCache
+      ..setFrom(p)
+      ..sub(_offset)
+      ..sub(position)
+      ..translate(halfTile.x, halfTile.y * multiplier);
+    final cart = isoToCart(iso);
     final px = (cart.x / halfTile.x - 1).ceil();
     final py = (cart.y / halfTile.y).ceil();
     return Block(px, py);
   }
+
+  final Vector2 _blockPositionCache = Vector2.zero();
 
   /// Get which block should be rendered on position [p].
   ///
@@ -161,9 +199,12 @@ class IsometricTileMapComponent extends PositionComponent {
   Block getBlockRenderedAt(Vector2 p) {
     final tile = effectiveTileSize;
     return getBlock(
-      p +
-          (Vector2(tile.x / 2, tile.y - effectiveTileHeight - tile.y / 4)
-            ..multiply(scale)),
+      _blockPositionCache
+        ..setFrom(p)
+        ..translate(
+          (tile.x / 2) * scale.x,
+          (tile.y - effectiveTileHeight - tile.y / 4) * scale.y,
+        ),
     );
   }
 
@@ -183,5 +224,19 @@ class IsometricTileMapComponent extends PositionComponent {
         block.y < matrix.length &&
         block.x >= 0 &&
         block.x < matrix[block.y].length;
+  }
+
+  void _recomputeSizeAndOffset() {
+    final width = matrix.fold<int>(
+      0,
+      (previousValue, element) => max(previousValue, element.length),
+    );
+    final height = matrix.length;
+
+    size.x = effectiveTileSize.x * width;
+    size.y = effectiveTileSize.y * height / 2 + effectiveTileHeight;
+
+    _offset.x = size.x / 2;
+    _offset.y = effectiveTileHeight;
   }
 }

@@ -49,13 +49,16 @@ class Anchor {
   Vector2 toOtherAnchorPosition(
     Vector2 position,
     Anchor otherAnchor,
-    Vector2 size,
-  ) {
+    Vector2 size, {
+    Vector2? out,
+  }) {
     if (this == otherAnchor) {
       return position;
     } else {
-      return position +
-          ((otherAnchor.toVector2() - toVector2())..multiply(size));
+      return (out ?? Vector2.zero())
+        ..setValues(otherAnchor.x - x, otherAnchor.y - y)
+        ..multiply(size)
+        ..add(position);
     }
   }
 

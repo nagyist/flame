@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../inventory_cubit.dart';
 import '../player_cubit.dart';
 
-class PlayerListener extends Component
+class _PlayerListener extends Component
     with FlameBlocListenable<PlayerCubit, PlayerState> {
   PlayerState? last;
   @override
@@ -16,9 +16,16 @@ class PlayerListener extends Component
 
     last = state;
   }
+
+  @override
+  void onInitialState(PlayerState state) {
+    super.onInitialState(state);
+
+    last ??= state;
+  }
 }
 
-class SadPlayerListener extends Component
+class _SadPlayerListener extends Component
     with FlameBlocListenable<PlayerCubit, PlayerState> {
   PlayerState? last;
 
@@ -32,6 +39,13 @@ class SadPlayerListener extends Component
     super.onNewState(state);
 
     last = state;
+  }
+
+  @override
+  void onInitialState(PlayerState state) {
+    super.onInitialState(state);
+
+    last ??= state;
   }
 }
 
@@ -47,7 +61,7 @@ void main() {
         );
         await game.ensureAdd(provider);
 
-        final component = PlayerListener();
+        final component = _PlayerListener();
         expect(() => provider.ensureAdd(component), throwsAssertionError);
       },
     );
@@ -56,7 +70,7 @@ void main() {
       'throws assertion error when the bloc set multiple times',
       (game) async {
         final bloc = PlayerCubit();
-        final component = PlayerListener()..bloc = bloc;
+        final component = _PlayerListener()..bloc = bloc;
         expect(() => component.bloc = bloc, throwsAssertionError);
       },
     );
@@ -70,7 +84,7 @@ void main() {
         );
         await game.ensureAdd(provider);
 
-        final component = PlayerListener();
+        final component = _PlayerListener();
         await provider.ensureAdd(component);
 
         component.removeFromParent();
@@ -78,7 +92,7 @@ void main() {
 
         bloc.makeSad();
         await Future.microtask(() {});
-        expect(component.last, isNull);
+        expect(component.last, equals(PlayerState.alive));
       },
     );
 
@@ -91,17 +105,17 @@ void main() {
         );
         await game.ensureAdd(provider);
 
-        final component = SadPlayerListener();
+        final component = _SadPlayerListener();
         await provider.ensureAdd(component);
 
         bloc.kill();
         await Future.microtask(() {});
-        expect(component.last, isNull);
+        expect(component.last, equals(PlayerState.alive));
       },
     );
 
     testWithFlameGame(
-      'successfully retreive the bloc via getter',
+      'successfully retrieve the bloc via getter',
       (game) async {
         final bloc = PlayerCubit();
         final provider = FlameBlocProvider<PlayerCubit, PlayerState>.value(
@@ -109,7 +123,7 @@ void main() {
         );
         await game.ensureAdd(provider);
 
-        final component = PlayerListener();
+        final component = _PlayerListener();
         await provider.ensureAdd(component);
 
         expect(component.bloc, bloc);
@@ -126,23 +140,23 @@ void main() {
       final router = RouterComponent(
         routes: {
           'start': Route(Component.new),
-          'playerRoute': CustomBlocRoute(
+          'playerRoute': _CustomBlocRoute(
             onPush: (self, prevRoute) {
               playerPushCalled++;
             },
             onPop: (self, prevRoute) {
               playerPopCalled++;
             },
-            build: (self) => PlayerListener(),
+            build: (self) => _PlayerListener(),
           ),
-          'sadRoute': CustomBlocRoute(
+          'sadRoute': _CustomBlocRoute(
             onPush: (self, prevRoute) {
               sadPushCalled++;
             },
             onPop: (self, prevRoute) {
               sadPopCalled++;
             },
-            build: (self) => SadPlayerListener(),
+            build: (self) => _SadPlayerListener(),
           ),
         },
         initialRoute: 'start',
@@ -190,10 +204,9 @@ void main() {
   });
 }
 
-class CustomBlocRoute extends Route {
-  CustomBlocRoute({
+class _CustomBlocRoute extends Route {
+  _CustomBlocRoute({
     Component Function()? builder,
-    super.transparent,
     void Function(Route, Route?)? onPush,
     void Function(Route, Route)? onPop,
     Component Function(Route)? build,

@@ -14,6 +14,14 @@ class TimeScaleExample extends FlameGame
   static const description =
       'This example shows how time scale can be used to control game speed.';
 
+  TimeScaleExample()
+      : super(
+          camera: CameraComponent.withFixedResolution(
+            width: 640,
+            height: 360,
+          ),
+        );
+
   final gameSpeedText = TextComponent(
     text: 'Time Scale: 1',
     textRenderer: TextPaint(
@@ -33,23 +41,22 @@ class TimeScaleExample extends FlameGame
 
   @override
   Future<void> onLoad() async {
-    camera.viewport = FixedResolutionViewport(Vector2(640, 360));
     final spriteSheet = SpriteSheet(
       image: await images.load('animations/chopper.png'),
       srcSize: Vector2.all(48),
     );
     gameSpeedText.position = Vector2(size.x * 0.5, size.y * 0.8);
 
-    await addAll([
+    await world.addAll([
       _Chopper(
-        position: Vector2(size.x * 0.3, size.y * 0.45),
+        position: Vector2(-100, -10),
         size: Vector2.all(64),
         anchor: Anchor.center,
         angle: -pi / 2,
         animation: spriteSheet.createAnimation(row: 0, stepTime: 0.05),
       ),
       _Chopper(
-        position: Vector2(size.x * 0.6, size.y * 0.55),
+        position: Vector2(100, 10),
         size: Vector2.all(64),
         anchor: Anchor.center,
         angle: pi / 2,
@@ -68,7 +75,7 @@ class TimeScaleExample extends FlameGame
 }
 
 class _Chopper extends SpriteAnimationComponent
-    with HasGameRef<TimeScaleExample>, CollisionCallbacks {
+    with HasGameReference<TimeScaleExample>, CollisionCallbacks {
   _Chopper({
     super.animation,
     super.position,
@@ -101,17 +108,20 @@ class _Chopper extends SpriteAnimationComponent
   }
 
   @override
-  void onCollisionStart(Set<Vector2> _, PositionComponent other) {
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
     if (other is _Chopper) {
-      gameRef.timeScale = 0.25;
+      game.timeScale = 0.25;
     }
-    super.onCollisionStart(_, other);
+    super.onCollisionStart(intersectionPoints, other);
   }
 
   @override
   void onCollisionEnd(PositionComponent other) {
     if (other is _Chopper) {
-      gameRef.timeScale = 1.0;
+      game.timeScale = 1.0;
       _timer.timer.start();
     }
     super.onCollisionEnd(other);

@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 
 class RayTraceExample extends FlameGame
     with HasCollisionDetection, TapDetector {
-  Paint paint = Paint()..color = Colors.red.withOpacity(0.6);
+  Paint paint = Paint()..color = Colors.red.withValues(alpha: 0.6);
   bool isClicked = false;
 
   Vector2 get origin => canvasSize / 2;
@@ -29,7 +29,7 @@ class RayTraceExample extends FlameGame
   Future<void> onLoad() async {
     add(
       CircleComponent(
-        radius: min(camera.canvasSize.x, camera.canvasSize.y) / 2,
+        radius: min(size.x, size.y) / 2,
         paint: boxPaint,
         children: [CircleHitbox()],
       ),

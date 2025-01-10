@@ -26,9 +26,27 @@ class _MyGame extends FlameGame {
   }
 
   @override
+  void update(double dt) {
+    super.update(dt);
+    events.add('update');
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    events.add('render');
+  }
+
+  @override
   void onRemove() {
     super.onRemove();
     events.add('onRemove');
+  }
+
+  @override
+  void onDispose() {
+    super.onDispose();
+    events.add('onDispose');
   }
 }
 
@@ -185,21 +203,53 @@ void main() {
         true,
         reason: 'onRemove was not called',
       );
+      expect(
+        events.contains('onDispose'),
+        true,
+        reason: 'onDispose was not called',
+      );
     });
 
     testWidgets('on resize, parents are kept', (tester) async {
       final events = <String>[];
       await tester.pumpWidget(_MyContainer(events));
 
+      // This ensures that the game is attached.
+      await tester.pump();
+
       events.clear();
       final state = tester.state<_MyContainerState>(find.byType(_MyContainer));
       state.causeResize();
 
       await tester.pump();
-      expect(events, ['onGameResize']); // no onRemove
+      expect(
+        events,
+        [
+          // additional because of the initial pump to ensure attachment
+          'update',
+          'onGameResize',
+          'update',
+          'render',
+        ],
+      ); // no onRemove
       final game =
           tester.allWidgets.whereType<GameWidget<_MyGame>>().first.game;
       expect(game?.children, everyElement((Component c) => c.parent == game));
+    });
+
+    testWidgets('update is not called when game is paused', (tester) async {
+      final events = <String>[];
+      await tester.pumpWidget(_MyContainer(events));
+
+      events.clear();
+      tester.allWidgets
+          .whereType<GameWidget<_MyGame>>()
+          .first
+          .game
+          ?.pauseEngine();
+      await tester.pump();
+      await tester.pump();
+      expect(events, ['render']);
     });
 
     testWidgets('all events are executed in the correct order', (tester) async {
@@ -228,9 +278,15 @@ void main() {
           'onGameResize',
           'onLoad',
           'onMount',
+          'update',
+          'render',
+          'update',
           'onRemove',
+          'onDispose',
           'onGameResize',
           'onMount',
+          'update',
+          'render',
         ],
       );
     });

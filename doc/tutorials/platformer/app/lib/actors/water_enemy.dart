@@ -5,7 +5,7 @@ import 'package:flame/effects.dart';
 import '../ember_quest.dart';
 
 class WaterEnemy extends SpriteAnimationComponent
-    with HasGameRef<EmberQuestGame> {
+    with HasGameReference<EmberQuestGame> {
   final Vector2 gridPosition;
   double xOffset;
 
@@ -23,14 +23,14 @@ class WaterEnemy extends SpriteAnimationComponent
       SpriteAnimationData.sequenced(
         amount: 2,
         textureSize: Vector2.all(16),
-        stepTime: 0.70,
+        stepTime: 0.7,
       ),
     );
     position = Vector2(
       (gridPosition.x * size.x) + xOffset,
       game.size.y - (gridPosition.y * size.y),
     );
-    add(RectangleHitbox()..collisionType = CollisionType.passive);
+    add(RectangleHitbox(collisionType: CollisionType.passive));
     add(
       MoveEffect.by(
         Vector2(-2 * size.x, 0),

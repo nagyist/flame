@@ -1,17 +1,19 @@
 import 'package:flame/components.dart';
-import 'package:flame/experimental.dart';
 import 'package:flame/game.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+class _GameReferenceGame extends FlameGame {}
+
 void main() {
   group('HasGameReference', () {
-    testWithFlameGame(
+    testWithGame(
       'component with default HasGameReference',
+      _GameReferenceGame.new,
       (game) async {
         final component1 = _Component<FlameGame>();
-        final component2 = _Component<Game>();
+        final component2 = _Component<_GameReferenceGame>();
         game.addAll([component1, component2]);
         expect(component1.game, game);
         expect(component2.game, game);
@@ -50,7 +52,8 @@ void main() {
         expect(
           () => component.game,
           failsAssert(
-            'Found game of type FlameGame, while type _MyGame was expected',
+            'Found game of type FlameGame<World>, while type _MyGame was '
+            'expected',
           ),
         );
       },
@@ -95,14 +98,15 @@ void main() {
       final component = _BarComponent();
       await game.ensureAdd(component);
 
-      component.game = MockFlameGame();
+      component.game = _MockFlameGame();
 
-      expect(component.game, isA<MockFlameGame>());
+      expect(component.game, isA<_MockFlameGame>());
     });
   });
 }
 
-class _Component<T extends Game> extends Component with HasGameReference<T> {}
+class _Component<T extends FlameGame> extends Component
+    with HasGameReference<T> {}
 
 class _MyGame extends FlameGame {
   bool calledFoo = false;
@@ -119,4 +123,4 @@ class _FooComponent extends Component with HasGameReference<_MyGame> {
 
 class _BarComponent extends Component with HasGameReference<_MyGame> {}
 
-class MockFlameGame extends Mock implements _MyGame {}
+class _MockFlameGame extends Mock implements _MyGame {}

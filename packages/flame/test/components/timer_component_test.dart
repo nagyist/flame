@@ -18,6 +18,23 @@ class _MyTimerComponent extends TimerComponent {
   }
 }
 
+class _MyTickOnLoadTimerComponent extends TimerComponent {
+  int count = 0;
+
+  _MyTickOnLoadTimerComponent()
+      : super(
+          period: 1,
+          repeat: true,
+          removeOnFinish: false,
+          tickWhenLoaded: true,
+        );
+
+  @override
+  void onTick() {
+    count++;
+  }
+}
+
 class _NonRepeatingTimerComponent extends TimerComponent {
   _NonRepeatingTimerComponent()
       : super(
@@ -32,6 +49,7 @@ void main() {
     testWithFlameGame('runs the tick method', (game) async {
       final timer = _MyTimerComponent();
       game.add(timer);
+      await game.ready();
       game.update(0);
 
       game.update(1.2);
@@ -42,24 +60,27 @@ void main() {
 
     testWithFlameGame('never remove from the game when is repeating',
         (game) async {
-      game.add(_MyTimerComponent());
+      final world = game.world;
+      world.add(_MyTimerComponent());
+      await game.ready();
       game.update(0);
 
       game.update(1.2);
 
       game.update(0);
-      expect(game.children.length, equals(1));
+      expect(world.children.length, equals(1));
     });
 
     testWithFlameGame('is removed from the game when is finished',
         (game) async {
-      game.add(_NonRepeatingTimerComponent());
+      final world = game.world;
+      world.add(_NonRepeatingTimerComponent());
       game.update(0);
 
       game.update(1.2);
 
       game.update(0);
-      expect(game.children.length, equals(0));
+      expect(world.children.length, equals(0));
     });
 
     testWithFlameGame('calls onTick when provided', (game) async {
@@ -72,10 +93,28 @@ void main() {
           },
         ),
       );
+      await game.ready();
       game.update(0);
       game.update(1.2);
 
       expect(called, isTrue);
     });
+
+    testWithFlameGame(
+      'runs the tick method on load when tickWhenLoaded is true',
+      (game) async {
+        final timer = _MyTickOnLoadTimerComponent();
+        game.add(timer);
+        await game.ready();
+        expect(timer.count, equals(1));
+
+        game.update(0);
+
+        game.update(1.2);
+
+        game.update(0);
+        expect(timer.count, equals(2));
+      },
+    );
   });
 }

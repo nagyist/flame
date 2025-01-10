@@ -9,8 +9,15 @@ When `debugMode` is enabled, each `PositionComponent` will be rendered with thei
 have their positions written on the screen. This way, you can visually verify the components
 boundaries and positions.
 
-To see a working example of the debugging features of the `FlameGame`, check this
-[example](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/components/debug_example.dart).
+Check out this [working example of the debugging features of the `FlameGame`](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/components/debug_example.dart).
+
+
+## Devtools extension
+
+If you open the [Flutter DevTools](https://docs.flutter.dev/tools/devtools/overview), you will see a
+new tab called "Flame". This tab will show you information about the current game, for example a
+visualization of the component tree, the ability to play, pause and step the game, information
+about the selected component, and more.
 
 
 ## FPS
@@ -35,3 +42,46 @@ commonly want to show the current FPS somewhere when the `FpsComponent` is used.
 
 
 [TextComponent]: ../rendering/text_rendering.md#textcomponent
+
+
+### ChildCounterComponent
+
+`ChildCounterComponent` is a component that renders the number of children of
+type `T` from a component (`target`) every second. So for example:
+
+So for example, the following will render the number of `SpriteAnimationComponent` that are
+children of the game `world`:
+
+```dart
+add(
+  ChildCounterComponent<SpriteAnimationComponent>(
+    target: world,
+  ),
+);
+```
+
+
+### TimeTrackComponent
+
+This component allows developers to track time spent inside their code. This can be useful for
+performance debugging time spent in certain parts of the code.
+
+To use it, add it to your game somewhere (since this is a debug feature, we advise to only add the
+component in a debug build/flavor):
+
+```dart
+add(TimeTrackComponent());
+```
+
+Then in the code section that you want to track time, do the following:
+
+```dart
+void update(double dt) {
+  TimeTrackComponent.start('MyComponent.update');
+  // ...
+  TimeTrackComponent.end('MyComponent.update');
+}
+```
+
+With the calls above, the added `TimeTrackComponent` will render the elapsed time in
+microseconds.

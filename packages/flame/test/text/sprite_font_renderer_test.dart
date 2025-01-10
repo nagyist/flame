@@ -11,11 +11,11 @@ import '../_resources/load_image.dart';
 void main() {
   group('SpriteFontRenderer', () {
     test('creating SpriteFontRenderer', () async {
-      final renderer = await createRenderer();
-      expect(renderer.formatter.font.source, isA<Image>());
-      expect(renderer.formatter.font.size, 6);
-      expect(renderer.formatter.scale, 1.0);
-      expect(renderer.formatter.letterSpacing, 0);
+      final renderer = await _createRenderer();
+      expect(renderer.font.source, isA<Image>());
+      expect(renderer.font.size, 6);
+      expect(renderer.scale, 1.0);
+      expect(renderer.letterSpacing, 0);
 
       expect(
         () => renderer.render(MockCanvas(), 'Ї', Vector2.zero()),
@@ -29,35 +29,33 @@ void main() {
       );
     });
 
-    for (final p in [false, true]) {
-      testGolden(
-        'text rendering at different scales [legacy=$p]',
-        (game) async {
-          game.addAll([
-            RectangleComponent(size: Vector2(800, 600)),
-            TextBoxComponent(
-              text: textSample,
-              textRenderer: await createRenderer(letterSpacing: 1, legacy: p),
-              boxConfig: TextBoxConfig(maxWidth: 800),
-            ),
-            TextBoxComponent(
-              text: textSample,
-              textRenderer: await createRenderer(scale: 2, legacy: p),
-              boxConfig: TextBoxConfig(maxWidth: 800),
-              position: Vector2(0, 100),
-            ),
-            TextComponent(
-              text: 'FLAME',
-              textRenderer: (await createRenderer(scale: 25, legacy: p))
-                ..formatter.paint.color = const Color(0x44000000),
-              position: Vector2(400, 500),
-              anchor: Anchor.center,
-            ),
-          ]);
-        },
-        goldenFile: '../_goldens/sprite_font_renderer_1.png',
-      );
-    }
+    testGolden(
+      'text rendering at different scales',
+      (game) async {
+        game.addAll([
+          RectangleComponent(size: Vector2(800, 600)),
+          TextBoxComponent(
+            text: _textSample,
+            textRenderer: await _createRenderer(letterSpacing: 1),
+            boxConfig: const TextBoxConfig(maxWidth: 800),
+          ),
+          TextBoxComponent(
+            text: _textSample,
+            textRenderer: await _createRenderer(scale: 2),
+            boxConfig: const TextBoxConfig(maxWidth: 800),
+            position: Vector2(0, 100),
+          ),
+          TextComponent(
+            text: 'FLAME',
+            textRenderer: (await _createRenderer(scale: 25))
+              ..paint.color = const Color(0x44000000),
+            position: Vector2(400, 500),
+            anchor: Anchor.center,
+          ),
+        ]);
+      },
+      goldenFile: '../_goldens/sprite_font_renderer_1.png',
+    );
 
     testGolden(
       'Render text with ligatures',
@@ -88,6 +86,7 @@ void main() {
             ),
           ],
         );
+        // cSpell:ignore caffefe, badface
         game.addAll([
           RectangleComponent(
             size: Vector2(200, 200),
@@ -234,7 +233,7 @@ void main() {
           glyphs: [
             for (var j = 0; j < lines.length; j++)
               for (var i = 0; i < lines[j].length; i++)
-                Glyph(lines[j][i], left: i * 6, top: 1 + j * 6)
+                Glyph(lines[j][i], left: i * 6, top: 1 + j * 6),
           ],
         );
         const colors = [
@@ -268,7 +267,7 @@ void main() {
   });
 }
 
-const textSample = 'We hold these truths to be self-evident, that all men are '
+const _textSample = 'We hold these truths to be self-evident, that all men are '
     'created equal, that they are endowed by their Creator with certain '
     'unalienable Rights, that among these are Life, Liberty and the pursuit of '
     'Happiness. — That to secure these rights, Governments are instituted '
@@ -287,10 +286,9 @@ const textSample = 'We hold these truths to be self-evident, that all men are '
     'their right, it is their duty, to throw off such Government, and to '
     'provide new Guards for their future security.';
 
-Future<SpriteFontRenderer> createRenderer({
+Future<SpriteFontRenderer> _createRenderer({
   double scale = 1,
   double letterSpacing = 0,
-  bool legacy = false,
 }) async {
   const lines = [
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -298,35 +296,18 @@ Future<SpriteFontRenderer> createRenderer({
     r'0123456789.,:;—_!?@$%+-=/*',
     '#^&()[]{}<>|\\\'"`~←→↑↓ ',
   ];
-  if (legacy) {
-    // ignore: deprecated_member_use_from_same_package
-    return SpriteFontRenderer(
+  return SpriteFontRenderer.fromFont(
+    SpriteFont(
       source: await loadImage('alphabet.png'),
-      charHeight: 6,
-      charWidth: 6,
-      scale: scale,
-      glyphs: {
+      size: 6,
+      ascent: 6,
+      glyphs: [
         for (var j = 0; j < lines.length; j++)
           for (var i = 0; i < lines[j].length; i++)
-            // ignore: deprecated_member_use_from_same_package
-            lines[j][i]: GlyphData(left: i * 6, top: 1 + j * 6)
-      },
-      letterSpacing: letterSpacing,
-    );
-  } else {
-    return SpriteFontRenderer.fromFont(
-      SpriteFont(
-        source: await loadImage('alphabet.png'),
-        size: 6,
-        ascent: 6,
-        glyphs: [
-          for (var j = 0; j < lines.length; j++)
-            for (var i = 0; i < lines[j].length; i++)
-              Glyph(lines[j][i], left: i * 6, top: 1 + j * 6)
-        ],
-      ),
-      scale: scale,
-      letterSpacing: letterSpacing,
-    );
-  }
+            Glyph(lines[j][i], left: i * 6, top: 1 + j * 6),
+      ],
+    ),
+    scale: scale,
+    letterSpacing: letterSpacing,
+  );
 }

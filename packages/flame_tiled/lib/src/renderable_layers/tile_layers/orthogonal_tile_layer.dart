@@ -17,6 +17,8 @@ class OrthogonalTileLayer extends FlameTileLayer {
     required super.tiledAtlas,
     required super.animationFrames,
     required super.ignoreFlip,
+    required super.layerPaintFactory,
+    super.filterQuality,
   });
 
   @override
@@ -59,14 +61,17 @@ class OrthogonalTileLayer extends FlameTileLayer {
         );
 
         final flips = SimpleFlips.fromFlips(tileGid.flips);
-        final scale = size.x / src.width;
+        final scale = size.x / map.tileWidth;
         final anchorX = src.width - halfMapTile.x;
         final anchorY = src.height - halfMapTile.y;
 
         late double offsetX;
         late double offsetY;
-        offsetX = (tx + .5) * size.x;
-        offsetY = (ty + .5) * size.y;
+        offsetX = (tx + 0.5) * size.x;
+        offsetY = (ty + 0.5) * size.y;
+
+        offsetX += tileset.tileOffset?.x ?? 0;
+        offsetY += tileset.tileOffset?.y ?? 0;
 
         final scos = flips.cos * scale;
         final ssin = flips.sin * scale;

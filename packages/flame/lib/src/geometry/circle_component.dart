@@ -3,23 +3,24 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/extensions.dart';
 import 'package:flame/geometry.dart';
-import 'package:flame/src/effects/provider_interfaces.dart';
-import 'package:flame/src/utils/solve_quadratic.dart';
+import 'package:flame/src/math/solve_quadratic.dart';
 import 'package:meta/meta.dart';
 
-class CircleComponent extends ShapeComponent implements SizeProvider {
+class CircleComponent extends ShapeComponent {
   /// With this constructor you can create your [CircleComponent] from a radius
   /// and a position. It will also calculate the bounding rectangle [size] for
   /// the [CircleComponent].
   CircleComponent({
     double? radius,
     super.position,
+    super.scale,
     super.angle,
     super.anchor,
     super.children,
     super.priority,
     super.paint,
     super.paintLayers,
+    super.key,
   }) : super(size: Vector2.all((radius ?? 0) * 2));
 
   /// With this constructor you define the [CircleComponent] in relation to the
@@ -29,10 +30,13 @@ class CircleComponent extends ShapeComponent implements SizeProvider {
     double relation, {
     required Vector2 parentSize,
     super.position,
+    super.scale,
     super.angle,
     super.anchor,
     super.paint,
     super.paintLayers,
+    super.children,
+    super.key,
   }) : super(size: Vector2.all(relation * min(parentSize.x, parentSize.y)));
 
   @override

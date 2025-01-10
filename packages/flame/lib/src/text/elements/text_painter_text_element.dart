@@ -1,10 +1,10 @@
 import 'dart:ui';
 
-import 'package:flame/src/text/common/line_metrics.dart';
-import 'package:flame/src/text/elements/text_element.dart';
+import 'package:flame/text.dart';
 import 'package:flutter/rendering.dart' as flutter;
+import 'package:meta/meta.dart';
 
-class TextPainterTextElement extends TextElement {
+class TextPainterTextElement extends InlineTextElement {
   TextPainterTextElement(this._textPainter)
       : _box = LineMetrics(
           ascent: _textPainter.computeDistanceToActualBaseline(
@@ -17,6 +17,9 @@ class TextPainterTextElement extends TextElement {
   final flutter.TextPainter _textPainter;
   final LineMetrics _box;
 
+  @visibleForTesting
+  flutter.TextPainter get textPainter => _textPainter;
+
   @override
   LineMetrics get metrics => _box;
 
@@ -24,7 +27,12 @@ class TextPainterTextElement extends TextElement {
   void translate(double dx, double dy) => _box.translate(dx, dy);
 
   @override
-  void render(Canvas canvas) {
+  void draw(Canvas canvas) {
     _textPainter.paint(canvas, Offset(_box.left, _box.top));
+  }
+
+  @override
+  String toString() {
+    return 'TextPainterTextElement(text: ${_textPainter.text?.toPlainText()})';
   }
 }

@@ -1,7 +1,6 @@
-import 'package:flame/src/events/flame_game_mixins/has_tappable_components.dart';
-import 'package:flame/src/events/interfaces/multi_tap_listener.dart';
+import 'package:flame/events.dart';
+import 'package:flame/src/events/tap_config.dart';
 import 'package:flame/src/game/game.dart';
-import 'package:flame/src/gestures/events.dart';
 import 'package:flutter/gestures.dart';
 
 /// Mixin that can be added to a [Game] allowing it to receive tap events.
@@ -13,11 +12,8 @@ import 'package:flutter/gestures.dart';
 ///  - [onTapCancel]
 ///  - [onTap]
 /// in order to respond to each corresponding event. Those events whose methods
-/// are not overridden are ignored.
-///
-/// See [MultiTapListener] for the description of each individual event. If your
-/// game is derived from the FlameGame class, consider using the
-/// [HasTappableComponents] mixin instead.
+/// are not overridden are ignored. See [MultiTapListener] for the description
+/// of each individual event.
 mixin MultiTouchTapDetector on Game implements MultiTapListener {
   void onTapDown(int pointerId, TapDownInfo info) {}
   void onLongTapDown(int pointerId, TapDownInfo info) {}
@@ -27,7 +23,7 @@ mixin MultiTouchTapDetector on Game implements MultiTapListener {
 
   //#region MultiTapListener API
   @override
-  double get longTapDelay => 0.300;
+  double get longTapDelay => TapConfig.longTapDelay;
 
   @override
   void handleTap(int pointerId) => onTap(pointerId);
@@ -49,5 +45,15 @@ mixin MultiTouchTapDetector on Game implements MultiTapListener {
   void handleLongTapDown(int pointerId, TapDownDetails details) {
     onLongTapDown(pointerId, TapDownInfo.fromDetails(this, details));
   }
+
   //#endregion
+
+  @override
+  void mount() {
+    gestureDetectors.add<MultiTapGestureRecognizer>(
+      MultiTapGestureRecognizer.new,
+      (MultiTapGestureRecognizer instance) {},
+    );
+    super.mount();
+  }
 }

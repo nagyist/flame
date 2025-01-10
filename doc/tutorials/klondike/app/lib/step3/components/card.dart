@@ -47,7 +47,7 @@ class Card extends PositionComponent {
     const Radius.circular(KlondikeGame.cardRadius),
   );
   static final RRect backRRectInner = cardRRect.deflate(40);
-  static late final Sprite flameSprite = klondikeSprite(1367, 6, 357, 501);
+  static final Sprite flameSprite = klondikeSprite(1367, 6, 357, 501);
 
   void _renderBack(Canvas canvas) {
     canvas.drawRRect(cardRRect, backBackgroundPaint);
@@ -71,14 +71,14 @@ class Card extends PositionComponent {
       Color(0x880d8bff),
       BlendMode.srcATop,
     );
-  static late final Sprite redJack = klondikeSprite(81, 565, 562, 488);
-  static late final Sprite redQueen = klondikeSprite(717, 541, 486, 515);
-  static late final Sprite redKing = klondikeSprite(1305, 532, 407, 549);
-  static late final Sprite blackJack = klondikeSprite(81, 565, 562, 488)
+  static final Sprite redJack = klondikeSprite(81, 565, 562, 488);
+  static final Sprite redQueen = klondikeSprite(717, 541, 486, 515);
+  static final Sprite redKing = klondikeSprite(1305, 532, 407, 549);
+  static final Sprite blackJack = klondikeSprite(81, 565, 562, 488)
     ..paint = blueFilter;
-  static late final Sprite blackQueen = klondikeSprite(717, 541, 486, 515)
+  static final Sprite blackQueen = klondikeSprite(717, 541, 486, 515)
     ..paint = blueFilter;
-  static late final Sprite blackKing = klondikeSprite(1305, 532, 407, 549)
+  static final Sprite blackKing = klondikeSprite(1305, 532, 407, 549)
     ..paint = blueFilter;
 
   void _renderFront(Canvas canvas) {
@@ -97,29 +97,24 @@ class Card extends PositionComponent {
     switch (rank.value) {
       case 1:
         _drawSprite(canvas, suitSprite, 0.5, 0.5, scale: 2.5);
-        break;
       case 2:
         _drawSprite(canvas, suitSprite, 0.5, 0.25);
         _drawSprite(canvas, suitSprite, 0.5, 0.25, rotate: true);
-        break;
       case 3:
         _drawSprite(canvas, suitSprite, 0.5, 0.2);
         _drawSprite(canvas, suitSprite, 0.5, 0.5);
         _drawSprite(canvas, suitSprite, 0.5, 0.2, rotate: true);
-        break;
       case 4:
         _drawSprite(canvas, suitSprite, 0.3, 0.25);
         _drawSprite(canvas, suitSprite, 0.7, 0.25);
         _drawSprite(canvas, suitSprite, 0.3, 0.25, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.25, rotate: true);
-        break;
       case 5:
         _drawSprite(canvas, suitSprite, 0.3, 0.25);
         _drawSprite(canvas, suitSprite, 0.7, 0.25);
         _drawSprite(canvas, suitSprite, 0.3, 0.25, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.25, rotate: true);
         _drawSprite(canvas, suitSprite, 0.5, 0.5);
-        break;
       case 6:
         _drawSprite(canvas, suitSprite, 0.3, 0.25);
         _drawSprite(canvas, suitSprite, 0.7, 0.25);
@@ -127,7 +122,6 @@ class Card extends PositionComponent {
         _drawSprite(canvas, suitSprite, 0.7, 0.5);
         _drawSprite(canvas, suitSprite, 0.3, 0.25, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.25, rotate: true);
-        break;
       case 7:
         _drawSprite(canvas, suitSprite, 0.3, 0.2);
         _drawSprite(canvas, suitSprite, 0.7, 0.2);
@@ -136,7 +130,6 @@ class Card extends PositionComponent {
         _drawSprite(canvas, suitSprite, 0.7, 0.5);
         _drawSprite(canvas, suitSprite, 0.3, 0.2, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.2, rotate: true);
-        break;
       case 8:
         _drawSprite(canvas, suitSprite, 0.3, 0.2);
         _drawSprite(canvas, suitSprite, 0.7, 0.2);
@@ -146,7 +139,6 @@ class Card extends PositionComponent {
         _drawSprite(canvas, suitSprite, 0.3, 0.2, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.2, rotate: true);
         _drawSprite(canvas, suitSprite, 0.5, 0.35, rotate: true);
-        break;
       case 9:
         _drawSprite(canvas, suitSprite, 0.3, 0.2);
         _drawSprite(canvas, suitSprite, 0.7, 0.2);
@@ -157,7 +149,6 @@ class Card extends PositionComponent {
         _drawSprite(canvas, suitSprite, 0.7, 0.2, rotate: true);
         _drawSprite(canvas, suitSprite, 0.3, 0.4, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.4, rotate: true);
-        break;
       case 10:
         _drawSprite(canvas, suitSprite, 0.3, 0.2);
         _drawSprite(canvas, suitSprite, 0.7, 0.2);
@@ -169,16 +160,12 @@ class Card extends PositionComponent {
         _drawSprite(canvas, suitSprite, 0.5, 0.3, rotate: true);
         _drawSprite(canvas, suitSprite, 0.3, 0.4, rotate: true);
         _drawSprite(canvas, suitSprite, 0.7, 0.4, rotate: true);
-        break;
       case 11:
         _drawSprite(canvas, suit.isRed ? redJack : blackJack, 0.5, 0.5);
-        break;
       case 12:
         _drawSprite(canvas, suit.isRed ? redQueen : blackQueen, 0.5, 0.5);
-        break;
       case 13:
         _drawSprite(canvas, suit.isRed ? redKing : blackKing, 0.5, 0.5);
-        break;
     }
   }
 

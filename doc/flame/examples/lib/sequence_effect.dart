@@ -1,9 +1,8 @@
 import 'package:doc_flame_examples/flower.dart';
 import 'package:flame/effects.dart';
-import 'package:flame/experimental.dart';
 import 'package:flame/game.dart';
 
-class SequenceEffectGame extends FlameGame with HasTappableComponents {
+class SequenceEffectGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     final flower = Flower(
@@ -25,7 +24,7 @@ class SequenceEffectGame extends FlameGame with HasTappableComponents {
               EffectController(duration: 0.5),
             ),
             ScaleEffect.by(
-              Vector2.all(.75),
+              Vector2.all(0.75),
               EffectController(duration: 0.2, alternate: true),
             ),
           ]),

@@ -108,6 +108,16 @@ extension Vector2Extension on Vector2 {
     }
   }
 
+  /// Clamps this vector so that it is within or equals to the bounds defined by
+  /// [min] and [max].
+  void clamp(Vector2 min, Vector2 max) {
+    x = x.clamp(min.x, max.x);
+    y = y.clamp(min.y, max.y);
+  }
+
+  /// Sets both x and y to [value].
+  void setAll(double value) => setValues(value, value);
+
   /// Project this onto [other].
   ///
   /// [other] needs to have a length > 0;
@@ -127,6 +137,17 @@ extension Vector2Extension on Vector2 {
 
   /// Returns the inverse of this vector.
   Vector2 inverted() => Vector2(-x, -y);
+
+  /// Translates this Vector2 by [x] and [y].
+  void translate(double x, double y) {
+    setValues(this.x + x, this.y + y);
+  }
+
+  /// Creates a new Vector2 that is the current Vector2 translated by
+  /// [x] and [y].
+  Vector2 translated(double x, double y) {
+    return Vector2(this.x + x, this.y + y);
+  }
 
   /// Smoothly moves this [Vector2] in the direction [target] by a displacement
   /// given by a distance [ds] in that direction.
@@ -170,6 +191,14 @@ extension Vector2Extension on Vector2 {
 
   /// Modulo/Remainder
   Vector2 operator %(Vector2 mod) => Vector2(x % mod.x, y % mod.y);
+
+  /// Stringifies the Vector2 with a maximum precision of [maxPrecision].
+  String toStringWithMaxPrecision(int maxPrecision) {
+    final precision = pow(10, maxPrecision);
+    final truncatedX = (x * precision).truncate() / precision;
+    final truncatedY = (y * precision).truncate() / precision;
+    return 'Vector2($truncatedX, $truncatedY)';
+  }
 
   /// Create a Vector2 with ints as input
   static Vector2 fromInts(int x, int y) => Vector2(x.toDouble(), y.toDouble());

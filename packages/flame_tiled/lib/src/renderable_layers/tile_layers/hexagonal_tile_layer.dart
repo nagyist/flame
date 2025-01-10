@@ -18,6 +18,8 @@ class HexagonalTileLayer extends FlameTileLayer {
     required super.tiledAtlas,
     required super.animationFrames,
     required super.ignoreFlip,
+    required super.layerPaintFactory,
+    super.filterQuality,
   });
 
   @override
@@ -95,7 +97,7 @@ class HexagonalTileLayer extends FlameTileLayer {
         }
 
         final flips = SimpleFlips.fromFlips(tileGid.flips);
-        final scale = size.x / src.width;
+        final scale = size.x / map.tileWidth;
         final anchorX = src.width - halfMapTile.x;
         final anchorY = src.height - halfMapTile.y;
 
@@ -116,6 +118,9 @@ class HexagonalTileLayer extends FlameTileLayer {
           offsetX = tx * staggerX + halfDestinationTile.x;
           offsetY = ty * size.y + staggerY + halfDestinationTile.y;
         }
+
+        offsetX += tileset.tileOffset?.x ?? 0;
+        offsetY += tileset.tileOffset?.y ?? 0;
 
         final scos = flips.cos * scale;
         final ssin = flips.sin * scale;

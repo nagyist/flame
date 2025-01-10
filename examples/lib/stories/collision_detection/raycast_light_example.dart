@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/geometry.dart';
 import 'package:flame/input.dart';
@@ -27,8 +28,8 @@ with with mouse.
   Paint tapPaint = Paint();
 
   final _colorTween = ColorTween(
-    begin: Colors.blue.withOpacity(0.2),
-    end: Colors.red.withOpacity(0.2),
+    begin: Colors.blue.withValues(alpha: 0.2),
+    end: Colors.red.withValues(alpha: 0.2),
   );
 
   static const numberOfRays = 2000;
@@ -87,17 +88,16 @@ with with mouse.
   }
 
   @override
-  bool onTapDown(TapDownInfo info) {
+  void onTapDown(TapDownInfo info) {
     super.onTapDown(info);
-    final origin = info.eventPosition.game;
+    final origin = info.eventPosition.widget;
     isTapOriginCasted = origin == tapOrigin;
     tapOrigin = origin;
-    return false;
   }
 
   @override
   void onMouseMove(PointerHoverInfo info) {
-    final origin = info.eventPosition.game;
+    final origin = info.eventPosition.widget;
     isOriginCasted = origin == this.origin;
     this.origin = origin;
   }

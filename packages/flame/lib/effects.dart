@@ -9,7 +9,7 @@ export 'src/effects/controllers/duration_effect_controller.dart';
 export 'src/effects/controllers/effect_controller.dart';
 export 'src/effects/controllers/infinite_effect_controller.dart';
 export 'src/effects/controllers/linear_effect_controller.dart';
-export 'src/effects/controllers/noise_effect_controller.dart';
+export 'src/effects/controllers/mixins/has_single_child_effect_controller.dart';
 export 'src/effects/controllers/pause_effect_controller.dart';
 export 'src/effects/controllers/random_effect_controller.dart';
 export 'src/effects/controllers/repeated_effect_controller.dart';
@@ -31,9 +31,13 @@ export 'src/effects/provider_interfaces.dart'
     show
         AnchorProvider,
         AngleProvider,
+        ReadOnlyAngleProvider,
         PositionProvider,
         ScaleProvider,
         SizeProvider,
+        ReadOnlyPositionProvider,
+        ReadOnlyScaleProvider,
+        ReadOnlySizeProvider,
         OpacityProvider;
 export 'src/effects/remove_effect.dart';
 export 'src/effects/rotate_effect.dart';

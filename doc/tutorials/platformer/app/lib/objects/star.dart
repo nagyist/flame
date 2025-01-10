@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../ember_quest.dart';
 
-class Star extends SpriteComponent with HasGameRef<EmberQuestGame> {
+class Star extends SpriteComponent with HasGameReference<EmberQuestGame> {
   final Vector2 gridPosition;
   double xOffset;
 
@@ -24,13 +24,13 @@ class Star extends SpriteComponent with HasGameRef<EmberQuestGame> {
       (gridPosition.x * size.x) + xOffset + (size.x / 2),
       game.size.y - (gridPosition.y * size.y) - (size.y / 2),
     );
-    add(RectangleHitbox()..collisionType = CollisionType.passive);
+    add(RectangleHitbox(collisionType: CollisionType.passive));
     add(
       SizeEffect.by(
-        Vector2(-24, -24),
+        Vector2.all(-24),
         EffectController(
-          duration: .75,
-          reverseDuration: .5,
+          duration: 0.75,
+          reverseDuration: 0.5,
           infinite: true,
           curve: Curves.easeOut,
         ),

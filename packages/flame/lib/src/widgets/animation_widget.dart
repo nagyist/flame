@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flame/src/anchor.dart';
 import 'package:flame/src/cache/images.dart';
 import 'package:flame/src/sprite_animation.dart';
+import 'package:flame/src/sprite_animation_ticker.dart';
 import 'package:flame/src/widgets/base_future_builder.dart';
 import 'package:flame/src/widgets/sprite_painter.dart';
 import 'package:flutter/material.dart' hide Animation;
@@ -10,29 +11,41 @@ import 'package:flutter/material.dart' hide Animation;
 export '../sprite_animation.dart';
 
 /// A [StatelessWidget] that renders a [SpriteAnimation]
-class SpriteAnimationWidget extends StatelessWidget {
-  /// The positioning [Anchor]
+class SpriteAnimationWidget extends StatefulWidget {
+  /// The positioning [Anchor].
   final Anchor anchor;
 
-  /// Should the animation be playing or not
+  /// Whether the animation should be playing or not.
   final bool playing;
 
   final FutureOr<SpriteAnimation> _animationFuture;
+  final SpriteAnimationTicker? _animationTicker;
 
-  /// A builder function that is called if the loading fails
+  /// A builder function that is called if the loading fails.
   final WidgetBuilder? errorBuilder;
 
-  /// A builder function that is called while the loading is on the way
+  /// A builder function that is called while the loading is on the way.
   final WidgetBuilder? loadingBuilder;
+
+  /// A callback that is called when the animation completes.
+  final VoidCallback? onComplete;
+
+  /// A custom [Paint] to be used when rendering the sprite.
+  /// When omitted the default paint from the [Sprite] class will be used.
+  final Paint? paint;
 
   const SpriteAnimationWidget({
     required SpriteAnimation animation,
+    required SpriteAnimationTicker animationTicker,
     this.playing = true,
     this.anchor = Anchor.topLeft,
+    this.errorBuilder,
+    this.loadingBuilder,
+    this.onComplete,
+    this.paint,
     super.key,
   })  : _animationFuture = animation,
-        errorBuilder = null,
-        loadingBuilder = null;
+        _animationTicker = animationTicker;
 
   /// Loads image from the asset [path] and renders it as a widget.
   ///
@@ -48,26 +61,80 @@ class SpriteAnimationWidget extends StatelessWidget {
     this.anchor = Anchor.topLeft,
     this.errorBuilder,
     this.loadingBuilder,
+    this.onComplete,
+    this.paint,
     super.key,
-  }) : _animationFuture = SpriteAnimation.load(
-          path,
-          data,
-          images: images,
+  })  : _animationFuture = SpriteAnimation.load(path, data, images: images),
+        _animationTicker = null;
+
+  @override
+  State<SpriteAnimationWidget> createState() => _SpriteAnimationWidgetState();
+}
+
+class _SpriteAnimationWidgetState extends State<SpriteAnimationWidget> {
+  late FutureOr<SpriteAnimation> _animationFuture = widget._animationFuture;
+  late SpriteAnimationTicker? _animationTicker = widget._animationTicker;
+
+  @override
+  void didUpdateWidget(covariant SpriteAnimationWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _updateAnimation(
+      oldWidget._animationFuture,
+      widget._animationFuture,
+      oldWidget._animationTicker,
+      widget._animationTicker,
+    );
+  }
+
+  Future<void> _updateAnimation(
+    FutureOr<SpriteAnimation> oldFutureValue,
+    FutureOr<SpriteAnimation> newFutureValue,
+    SpriteAnimationTicker? oldTicker,
+    SpriteAnimationTicker? newTicker,
+  ) async {
+    final oldValue = await oldFutureValue;
+    final newValue = await newFutureValue;
+
+    final areFramesDifferent = oldValue != newValue ||
+        oldValue.frames.length != newValue.frames.length ||
+        oldValue.frames.fold(
+          true,
+          (previous, frame) {
+            final newFrame = newValue.frames[oldValue.frames.indexOf(frame)];
+
+            return previous &&
+                (frame.sprite.image == newFrame.sprite.image ||
+                    frame.sprite.src == newFrame.sprite.src);
+          },
         );
+
+    if (areFramesDifferent || oldTicker != newTicker) {
+      setState(() {
+        _animationFuture = newFutureValue;
+        _animationTicker = newTicker;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return BaseFutureBuilder<SpriteAnimation>(
       future: _animationFuture,
       builder: (_, spriteAnimation) {
+        final ticker = _animationTicker ?? spriteAnimation.createTicker();
+        ticker.completed.then((_) => widget.onComplete?.call());
+
         return InternalSpriteAnimationWidget(
           animation: spriteAnimation,
-          anchor: anchor,
-          playing: playing,
+          animationTicker: ticker,
+          anchor: widget.anchor,
+          playing: widget.playing,
+          paint: widget.paint,
         );
       },
-      errorBuilder: errorBuilder,
-      loadingBuilder: loadingBuilder,
+      errorBuilder: widget.errorBuilder,
+      loadingBuilder: widget.loadingBuilder,
     );
   }
 }
@@ -78,16 +145,23 @@ class InternalSpriteAnimationWidget extends StatefulWidget {
   /// The [SpriteAnimation] to be rendered
   final SpriteAnimation animation;
 
+  /// The [SpriteAnimationTicker] use for updating the [animation].
+  final SpriteAnimationTicker animationTicker;
+
   /// The positioning [Anchor]
   final Anchor anchor;
 
   /// Should the [animation] be playing or not
   final bool playing;
 
+  final Paint? paint;
+
   const InternalSpriteAnimationWidget({
     required this.animation,
+    required this.animationTicker,
     this.playing = true,
     this.anchor = Anchor.topLeft,
+    this.paint,
     super.key,
   });
 
@@ -115,19 +189,24 @@ class _InternalSpriteAnimationWidgetState
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.animation != widget.animation) {
-      oldWidget.animation.onComplete = null;
+      oldWidget.animationTicker.onComplete = null;
       _setupController();
+      if (widget.playing) {
+        _initAnimation();
+      }
     }
 
-    if (widget.playing) {
-      _initAnimation();
-    } else {
-      _pauseAnimation();
+    if (widget.playing != oldWidget.playing) {
+      if (widget.playing) {
+        _initAnimation();
+      } else {
+        _pauseAnimation();
+      }
     }
   }
 
   void _initAnimation() {
-    widget.animation.reset();
+    widget.animationTicker.reset();
     _lastUpdated = DateTime.now().microsecondsSinceEpoch.toDouble();
     _controller?.repeat(
       // Approximately 60 fps
@@ -136,7 +215,7 @@ class _InternalSpriteAnimationWidgetState
   }
 
   void _setupController() {
-    widget.animation.onComplete = _pauseAnimation;
+    widget.animationTicker.onComplete = _pauseAnimation;
     _controller ??= AnimationController(vsync: this)
       ..addListener(_onAnimationValueChanged);
   }
@@ -148,9 +227,9 @@ class _InternalSpriteAnimationWidgetState
     final lastUpdated = _lastUpdated ??= now;
     final dt = (now - lastUpdated) * microSecond;
 
-    final frameIndexBeforeTick = widget.animation.currentIndex;
-    widget.animation.update(dt);
-    final frameIndexAfterTick = widget.animation.currentIndex;
+    final frameIndexBeforeTick = widget.animationTicker.currentIndex;
+    widget.animationTicker.update(dt);
+    final frameIndexAfterTick = widget.animationTicker.currentIndex;
 
     if (frameIndexBeforeTick != frameIndexAfterTick) {
       setState(() {});
@@ -172,8 +251,9 @@ class _InternalSpriteAnimationWidgetState
   Widget build(BuildContext ctx) {
     return CustomPaint(
       painter: SpritePainter(
-        widget.animation.getSprite(),
+        widget.animationTicker.getSprite(),
         widget.anchor,
+        widget.paint,
       ),
     );
   }

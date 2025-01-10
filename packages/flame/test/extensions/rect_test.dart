@@ -22,9 +22,21 @@ void main() {
       expect(vector.x, rect.width);
       expect(vector.y, rect.height);
     });
+
     test('test from ui Rect to math Rectangle', () {
       const r1 = Rect.fromLTWH(0, 10, 20, 30);
       final r2 = r1.toMathRectangle();
+      expect(r2.top, r1.top);
+      expect(r2.bottom, r1.bottom);
+      expect(r2.left, r1.left);
+      expect(r2.right, r1.right);
+      expect(r2.width, r1.width);
+      expect(r2.height, r1.height);
+    });
+
+    test('test from ui Rect to Flame Rectangle', () {
+      const r1 = Rect.fromLTWH(0, 10, 20, 30);
+      final r2 = r1.toFlameRectangle();
       expect(r2.top, r1.top);
       expect(r2.bottom, r1.bottom);
       expect(r2.left, r1.left);
@@ -55,7 +67,7 @@ void main() {
     });
 
     test('test containsPoint calls contains on Rect', () {
-      final rect = MockRect();
+      final rect = _MockRect();
       final point = Vector2.zero();
 
       // mock contains result, but check it is called
@@ -69,9 +81,9 @@ void main() {
       // create points left, above, right and under
 
       // y position [0, 1] but left to rect's left
-      final left = Vector2(-.5, r.nextDouble() * 1);
+      final left = Vector2(-0.5, r.nextDouble() * 1);
       // x position [0, 1] but above rect's top
-      final above = Vector2(r.nextDouble() * 1, -.5);
+      final above = Vector2(r.nextDouble() * 1, -0.5);
       // y position [0, 1] but right to rect's right
       final right = Vector2(1.5, r.nextDouble() * 1);
       // x position [0, 1] but under rect's bottom
@@ -84,22 +96,22 @@ void main() {
       expect(rect.intersectsSegment(under, above), true);
 
       // above the rect and left to rect's left
-      final aboveLeft = Vector2(-.5, r.nextDouble() * 1 - 1);
+      final aboveLeft = Vector2(-0.5, r.nextDouble() * 1 - 1);
       // above the rect and left to rect's left
       final aboveRight = Vector2(1.5, r.nextDouble() * 1 - 1);
       // under the rect and right to rect's right
       final underRight = Vector2(1.5, r.nextDouble() * 1 + 1);
       // under the rect and left to rect's left
-      final underLeft = Vector2(-.5, r.nextDouble() * 1 + 1);
+      final underLeft = Vector2(-0.5, r.nextDouble() * 1 + 1);
       expect(rect.intersectsSegment(aboveLeft, aboveRight), false);
       expect(rect.intersectsSegment(aboveLeft, underLeft), false);
       expect(rect.intersectsSegment(underLeft, underRight), false);
       expect(rect.intersectsSegment(underRight, aboveRight), false);
 
       // any y position but left to rect's left
-      final nearLeft = Vector2(-.25, r.nextDouble() * 256);
+      final nearLeft = Vector2(-0.25, r.nextDouble() * 256);
       // any x position but above rect's top
-      final nearAbove = Vector2(r.nextDouble() * 256, -.25);
+      final nearAbove = Vector2(r.nextDouble() * 256, -0.25);
       // any y position but right to rect's right
       final nearRight = Vector2(1.25, r.nextDouble() * 256);
       // any x position but under rect's bottom
@@ -175,11 +187,11 @@ void main() {
         ),
       );
 
-      final boudingBox = RectExtension.getBounds(points);
+      final boundingBox = RectExtension.getBounds(points);
       final xList = points.map((e) => e.x);
       final yList = points.map((e) => e.y);
       expect(
-        boudingBox.topLeft,
+        boundingBox.topLeft,
         Offset(
           xList.reduce(min),
           yList.reduce(min),
@@ -187,7 +199,7 @@ void main() {
         reason: 'topLeft offset is not OK',
       );
       expect(
-        boudingBox.bottomRight,
+        boundingBox.bottomRight,
         Offset(
           xList.reduce(max),
           yList.reduce(max),
@@ -215,4 +227,4 @@ void main() {
   });
 }
 
-class MockRect extends Mock implements Rect {}
+class _MockRect extends Mock implements Rect {}

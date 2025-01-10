@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -23,14 +22,14 @@ class NotifyingVector2 extends Vector2 with ChangeNotifier {
       NotifyingVector2.zero()..setFrom(v);
 
   @override
-  void setValues(double x, double y) {
-    super.setValues(x, y);
+  void setValues(double x_, double y_) {
+    super.setValues(x_, y_);
     notifyListeners();
   }
 
   @override
-  void setFrom(Vector2 v) {
-    super.setFrom(v);
+  void setFrom(Vector2 other) {
+    super.setFrom(other);
     notifyListeners();
   }
 
@@ -186,5 +185,5 @@ class NotifyingVector2 extends Vector2 with ChangeNotifier {
   }
 
   @override
-  Float64List get storage => UnmodifiableFloat64ListView(super.storage);
+  Float64List get storage => super.storage.asUnmodifiableView();
 }

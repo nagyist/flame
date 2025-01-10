@@ -24,6 +24,7 @@ import 'package:meta/meta.dart';
 ///   argument is present, then it will be passed automatically. For example,
 ///   if you have a function `fn(YarnProject, int)`, then it can be invoked
 ///   from the yarn script simply as `fn(1)`.
+/// - the name does not match any of the built-in functions
 ///
 /// The functions must be added to the YarnProject before parsing the yarn
 /// scripts, since the parser would throw an error if it sees a function which
@@ -98,16 +99,12 @@ class FunctionStorage {
     return (List<FunctionArgument> args, YarnProject yarn, ErrorFn errorFn) {
       final arguments = function.checkAndUnpackArguments(args, errorFn);
       function.useYarnProject(yarn);
-      switch (function.returnType) {
-        case ExpressionType.boolean:
-          return BooleanUserDefinedFn(function, arguments);
-        case ExpressionType.numeric:
-          return NumericUserDefinedFn(function, arguments);
-        case ExpressionType.string:
-          return StringUserDefinedFn(function, arguments);
-        default:
-          throw AssertionError('Bad return type'); // coverage:ignore-line
-      }
+      return switch (function.returnType) {
+        ExpressionType.boolean => BooleanUserDefinedFn(function, arguments),
+        ExpressionType.numeric => NumericUserDefinedFn(function, arguments),
+        ExpressionType.string => StringUserDefinedFn(function, arguments),
+        _ => throw AssertionError('Bad return type'), // coverage:ignore-line
+      };
     };
   }
 
@@ -122,6 +119,16 @@ class FunctionStorage {
       _rxId.firstMatch(name) != null,
       'Function name "$name" is not an identifier',
     );
+  }
+
+  /// Clear all functions from storage.
+  void clear() {
+    _functions.clear();
+  }
+
+  /// Remove a function by [name].
+  void remove(String name) {
+    _functions.remove(name);
   }
 
   /// Regular expression that matches a valid identifier.

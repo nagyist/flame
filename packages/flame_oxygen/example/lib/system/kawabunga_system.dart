@@ -16,7 +16,8 @@ class KawabungaSystem extends BaseSystem with UpdateSystem {
     final textComponent = entity.get<TextComponent>()!;
     final textRenderer = TextPaint(
       style: textComponent.style.copyWith(
-        color: textComponent.style.color!.withOpacity(1 - timer.percentage),
+        color:
+            textComponent.style.color!.withValues(alpha: 1 - timer.percentage),
       ),
     );
 
@@ -33,7 +34,7 @@ class KawabungaSystem extends BaseSystem with UpdateSystem {
       final textComponent = entity.get<TextComponent>()!;
       final size = entity.get<SizeComponent>()!.size;
       final textRenderer = TextPaint(style: textComponent.style);
-      size.setFrom(textRenderer.measureText(textComponent.text));
+      size.setFrom(textRenderer.getLineMetrics(textComponent.text).size);
 
       final timer = entity.get<TimerComponent>()!;
       timer.timePassed = timer.timePassed + delta;

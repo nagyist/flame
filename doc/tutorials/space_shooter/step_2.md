@@ -12,12 +12,13 @@ use the `onPanUpdate` method. The updated code will look like the following:
 
 ```dart
 import 'package:flame/input.dart';
+import 'package:flame/events.dart';
 
 class SpaceShooterGame extends FlameGame with PanDetector {
   late Player player;
 
   @override
-  Future<void> onLoad() async {
+  void onLoad() {
     // omitted
   }
 
@@ -67,7 +68,7 @@ class SpaceShooterGame extends FlameGame with PanDetector {
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
-    player.move(info.delta.game);
+    player.move(info.delta.global);
   }
 }
 ```
@@ -116,7 +117,7 @@ class SpaceShooterGame extends FlameGame with PanDetector {
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
-    player.move(info.delta.game);
+    player.move(info.delta.global);
   }
 }
 ```
@@ -147,6 +148,12 @@ our game a little bit:
 
 ```dart
 class Player extends SpriteComponent with HasGameRef<SpaceShooterGame> {
+
+  Player() : super(
+    size: Vector2(100, 150),
+    anchor: Anchor.center,
+  );
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -154,9 +161,6 @@ class Player extends SpriteComponent with HasGameRef<SpaceShooterGame> {
     sprite = await gameRef.loadSprite('player-sprite.png');
 
     position = gameRef.size / 2;
-    width = 100;
-    height = 150;
-    anchor = Anchor.center;
   }
 
   void move(Vector2 delta) {
@@ -178,7 +182,7 @@ class SpaceShooterGame extends FlameGame with PanDetector {
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
-    player.move(info.delta.game);
+    player.move(info.delta.global);
   }
 }
 ```
@@ -191,3 +195,5 @@ structure for developing our game. And that closes this step!
 :page: step2
 :show: popup code
 ```
+
+[Next step: Adding animations and depth](./step_3.md)

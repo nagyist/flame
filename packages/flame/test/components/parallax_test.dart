@@ -23,13 +23,13 @@ class _ParallaxGame extends FlameGame {
       baseVelocity: Vector2(20, 0),
       velocityMultiplierDelta: Vector2(1.8, 1.0),
     );
-    add(parallaxComponent);
+    camera.viewport.add(parallaxComponent);
   }
 }
 
-class MockImages extends Mock implements Images {}
+class _MockImages extends Mock implements Images {}
 
-class MockImage extends Mock implements Image {
+class _MockImage extends Mock implements Image {
   @override
   int get height => 100;
 
@@ -47,14 +47,14 @@ class _SlowLoadParallaxGame extends FlameGame {
 
   @override
   Future<void> onLoad() async {
-    final mockImageCache = MockImages();
+    final mockImageCache = _MockImages();
 
     void createMockAnswer(int imageNumber, int time) {
       when(() => mockImageCache.load('$imageNumber.png')).thenAnswer(
         (_) {
           return Future<Image>.delayed(
             Duration(milliseconds: time * 100),
-            () => Future.value(MockImage()),
+            () => Future.value(_MockImage()),
           );
         },
       );

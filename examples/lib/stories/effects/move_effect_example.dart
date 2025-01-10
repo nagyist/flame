@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
 import 'package:flame/geometry.dart';
@@ -21,11 +22,19 @@ class MoveEffectExample extends FlameGame {
     an arbitrary path using `MoveEffect.along`.
   ''';
 
-  @override
-  void onMount() {
-    const tau = Transform2D.tau;
-    camera.viewport = FixedResolutionViewport(Vector2(400, 600));
+  MoveEffectExample()
+      : super(
+          camera: CameraComponent.withFixedResolution(
+            width: 400,
+            height: 600,
+          )..viewfinder.anchor = Anchor.topLeft,
+          world: _MoveEffectWorld(),
+        );
+}
 
+class _MoveEffectWorld extends World {
+  @override
+  void onLoad() {
     final paint1 = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5.0
@@ -87,6 +96,7 @@ class MoveEffectExample extends FlameGame {
         ),
     );
 
+    // Purple square, vibrating from two noise controllers.
     add(
       RectangleComponent.square(
         size: 15,
@@ -97,12 +107,18 @@ class MoveEffectExample extends FlameGame {
             [
               MoveEffect.by(
                 Vector2(5, 0),
-                PerlinNoiseEffectController(duration: 1, frequency: 20),
+                NoiseEffectController(
+                  duration: 1,
+                  noise: PerlinNoise(frequency: 20),
+                ),
               ),
               MoveEffect.by(Vector2.zero(), LinearEffectController(2)),
               MoveEffect.by(
                 Vector2(0, 10),
-                PerlinNoiseEffectController(duration: 1, frequency: 10),
+                NoiseEffectController(
+                  duration: 1,
+                  noise: PerlinNoise(frequency: 10),
+                ),
               ),
             ],
             infinite: true,
@@ -110,34 +126,12 @@ class MoveEffectExample extends FlameGame {
         ),
     );
 
-    final path1 = Path()..moveTo(200, 250);
-    for (var i = 1; i <= 5; i++) {
-      final x = 200 + 100 * sin(i * tau * 2 / 5);
-      final y = 350 - 100 * cos(i * tau * 2 / 5);
-      path1.lineTo(x, y);
-    }
-    for (var i = 0; i < 40; i++) {
-      add(
-        CircleComponent(radius: 5)
-          ..position = Vector2(0, -1000)
-          ..add(
-            MoveAlongPathEffect(
-              path1,
-              EffectController(
-                duration: 10,
-                startDelay: i * 0.2,
-                infinite: true,
-              ),
-              absolute: true,
-            ),
-          ),
-      );
-    }
-
+    // A circle of moving rectangles.
     final path2 = Path()..addOval(const Rect.fromLTRB(80, 230, 320, 470));
     for (var i = 0; i < 20; i++) {
       add(
         RectangleComponent.square(size: 10)
+          ..position = Vector2(i * 10, 0)
           ..paint = (Paint()..color = Colors.tealAccent)
           ..add(
             MoveAlongPathEffect(
@@ -147,7 +141,33 @@ class MoveEffectExample extends FlameGame {
                 startDelay: i * 0.3,
                 infinite: true,
               ),
+              absolute: true,
               oriented: true,
+            ),
+          ),
+      );
+    }
+
+    // A star of moving rectangles.
+    final path1 = Path()..moveTo(200, 250);
+    for (var i = 1; i <= 5; i++) {
+      final x = 200 + 100 * sin(i * tau * 2 / 5);
+      final y = 350 - 100 * cos(i * tau * 2 / 5);
+      path1.lineTo(x, y);
+    }
+    for (var i = 0; i < 40; i++) {
+      add(
+        CircleComponent(radius: 5)
+          ..position = Vector2(i * 10, 0)
+          ..add(
+            MoveAlongPathEffect(
+              path1,
+              EffectController(
+                duration: 10,
+                startDelay: i * 0.2,
+                infinite: true,
+              ),
+              absolute: true,
             ),
           ),
       );

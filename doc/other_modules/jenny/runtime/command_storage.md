@@ -15,7 +15,7 @@ In order to register a function as a yarn command, the function must satisfy sev
   `<<walk>>`, `<<moveCamera>>`, or `<<prompt>>`.
 - The function's arguments must be of types that are known to Yarn: `String`, `num`, `int`,
   `double`, or `bool`. All arguments must be positional, with no defaults.
-- In order to register the function, use methods `addCommand0()` ... `addCommand3()`, according to
+- In order to register the function, use methods `addCommand0()` ... `addCommand5()`, according to
   the number of function's arguments.
 - If the function's signature has 1 or more booleans at the end, then those arguments will be
   considered optional and will default to `false`.
@@ -38,9 +38,33 @@ In order to register a function as a yarn command, the function must satisfy sev
 **addCommand3**(`String name`, `FutureOr<void> Function(T1, T2, T3) fn`)
 : Registers a three-argument function `fn` as the command `name`.
 
+**addCommand4**(`String name`, `FutureOr<void> Function(T1, T2, T3, T4) fn`)
+: Registers a four-argument function `fn` as the command `name`.
+
+**addCommand5**(`String name`, `FutureOr<void> Function(T1, T2, T3, T4, T5) fn`)
+: Registers a five-argument function `fn` as the command `name`.
+
 **addOrphanedCommand**(`name`)
 : Registers a command `name` which is not backed by any Dart function. Such command will still be
   delivered to [DialogueView]s via the `onCommand()` callback, but its arguments will not be parsed.
+
+**clear**
+: Removes all user-defined commands
+
+**remove**(`String name`)
+: Removes the user-defined command with the specified `name`.
+
+
+## Properties
+
+**length** → `int`
+: The number of user-defined commands registered so far.
+
+**isEmpty** → `bool`
+: Returns `true` if no user-defined commands were registered.
+
+**isNotEmpty** → `bool`
+: Returns `true` if any commands have been registered
 
 
 ## Examples
@@ -76,8 +100,8 @@ class MyGame {
     assert(quests[questId]!.name == questName);
     // ...
   }
-
-  Future<void> onLoad() async {
+  @override
+  void onLoad() {
     yarnProject = YarnProject()
       ..commands.addCommand2('StartQuest', startQuest);
   }
@@ -106,7 +130,8 @@ class MyGame {
     yarnProject.variables.setVariable(r'$prompt', name);
   }
 
-  Future<void> onLoad() async {
+  @override
+  void onLoad() {
     yarnProject
       ..variables.setVariable(r'$prompt', '')
       ..commands.addCommand1('prompt', prompt);

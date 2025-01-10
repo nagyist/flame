@@ -1,8 +1,6 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flame/src/effects/provider_interfaces.dart';
-import 'package:flame/src/extensions/image.dart';
 import 'package:meta/meta.dart';
 
 export '../sprite.dart';
@@ -12,48 +10,13 @@ export '../sprite.dart';
 /// angle.
 ///
 /// This a commonly used subclass of [Component].
-class SpriteComponent extends PositionComponent
-    with HasPaint
-    implements SizeProvider {
+class SpriteComponent extends PositionComponent with HasPaint {
   /// When set to true, the component is auto-resized to match the
   /// size of underlying sprite.
-  late bool _autoResize;
-
-  /// Returns current value of auto resize flag.
-  bool get autoResize => _autoResize;
-
-  /// Sets the given value of autoResize flag. Will update the [size]
-  /// to fit srcSize of [sprite] if set to  true.
-  set autoResize(bool value) {
-    _autoResize = value;
-    if (value) {
-      if (_sprite != null) {
-        size.setFrom(_sprite!.srcSize);
-      } else {
-        size.setZero();
-      }
-    }
-  }
+  bool _autoResize;
 
   /// The [sprite] to be rendered by this component.
   Sprite? _sprite;
-
-  /// Returns the current sprite rendered by this component.
-  Sprite? get sprite => _sprite;
-
-  /// Sets the given sprite as the new [sprite] of this component.
-  /// Will update the size if [autoResize] is set to true.
-  set sprite(Sprite? value) {
-    _sprite = value;
-
-    if (_autoResize) {
-      if (value != null) {
-        size.setFrom(value.srcSize);
-      } else {
-        size.setZero();
-      }
-    }
-  }
 
   /// Creates a component with an empty sprite which can be set later
   SpriteComponent({
@@ -68,6 +31,7 @@ class SpriteComponent extends PositionComponent
     super.anchor,
     super.children,
     super.priority,
+    super.key,
   })  : assert(
           (size == null) == (autoResize ?? size == null),
           '''If size is set, autoResize should be false or size should be null when autoResize is true.''',
@@ -78,6 +42,10 @@ class SpriteComponent extends PositionComponent
     if (paint != null) {
       this.paint = paint;
     }
+
+    /// Register a listener to differentiate between size modification done by
+    /// external calls v/s the ones done by [_resizeToSprite].
+    this.size.addListener(_handleAutoResizeState);
   }
 
   SpriteComponent.fromImage(
@@ -90,9 +58,11 @@ class SpriteComponent extends PositionComponent
     Vector2? size,
     Vector2? scale,
     double? angle,
+    double nativeAngle = 0,
     Anchor? anchor,
     Iterable<Component>? children,
     int? priority,
+    ComponentKey? key,
   }) : this(
           sprite: Sprite(
             image,
@@ -102,13 +72,39 @@ class SpriteComponent extends PositionComponent
           autoResize: autoResize,
           paint: paint,
           position: position,
-          size: size ?? srcSize ?? image.size,
+          size: size,
           scale: scale,
           angle: angle,
+          nativeAngle: nativeAngle,
           anchor: anchor,
           children: children,
           priority: priority,
+          key: key,
         );
+
+  /// Returns current value of auto resize flag.
+  bool get autoResize => _autoResize;
+
+  /// Sets the given value of autoResize flag. Will update the [size]
+  /// to fit srcSize of [sprite] if set to  true.
+  set autoResize(bool value) {
+    _autoResize = value;
+    _resizeToSprite();
+  }
+
+  /// This flag helps in detecting if the size modification is done by
+  /// some external call vs [_autoResize]ing code from [_resizeToSprite].
+  bool _isAutoResizing = false;
+
+  /// Returns the current sprite rendered by this component.
+  Sprite? get sprite => _sprite;
+
+  /// Sets the given sprite as the new [sprite] of this component.
+  /// Will update the size if [autoResize] is set to true.
+  set sprite(Sprite? value) {
+    _sprite = value;
+    _resizeToSprite();
+  }
 
   @override
   @mustCallSuper
@@ -127,5 +123,29 @@ class SpriteComponent extends PositionComponent
       size: size,
       overridePaint: paint,
     );
+  }
+
+  /// Updates the size [sprite]'s srcSize if [autoResize] is true.
+  void _resizeToSprite() {
+    if (_autoResize) {
+      _isAutoResizing = true;
+
+      final newX = _sprite?.srcSize.x ?? 0;
+      final newY = _sprite?.srcSize.y ?? 0;
+
+      // Modify only if changed.
+      if (size.x != newX || size.y != newY) {
+        size.setValues(newX, newY);
+      }
+
+      _isAutoResizing = false;
+    }
+  }
+
+  /// Turns off [_autoResize]ing if a size modification is done by user.
+  void _handleAutoResizeState() {
+    if (_autoResize && (!_isAutoResizing)) {
+      _autoResize = false;
+    }
   }
 }

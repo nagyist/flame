@@ -1,18 +1,19 @@
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-import 'package:flame/src/collisions/collision_passthrough.dart';
+import 'package:flame_test/flame_test.dart';
 import 'package:test/test.dart';
 
 import 'collision_test_helpers.dart';
 
-class Passthrough extends TestBlock with CollisionPassthrough {
-  Passthrough() : super(Vector2.zero(), Vector2.all(10));
+class _Passthrough extends TestBlock with CollisionPassthrough {
+  _Passthrough() : super(Vector2.zero(), Vector2.all(10));
 }
 
 void main() {
   group('CollisionPassthrough', () {
     runCollisionTestRegistry({
       'Passing collisions to parent': (game) async {
-        final passthrough = Passthrough();
+        final passthrough = _Passthrough();
         final hitboxParent =
             TestBlock(Vector2.zero(), Vector2.all(10), addTestHitbox: false)
               ..add(passthrough);
@@ -38,7 +39,24 @@ void main() {
         expect(hitboxParent.startCounter, 1);
         expect(hitboxParent.endCounter, 1);
         expect(hitboxParent.onCollisionCounter, 1);
-      }
+      },
+    });
+
+    testWithFlameGame('Null passthrough', (game) async {
+      final hitbox = CompositeHitbox(children: [RectangleHitbox()]);
+      final component = PositionComponent(children: [hitbox]);
+      final testBlock = TestBlock(Vector2.zero(), Vector2.all(10));
+
+      await game.addAll([component, testBlock]);
+      await game.ready();
+
+      expect(hitbox.passthroughParent, isNull);
+
+      hitbox.removeFromParent();
+      testBlock.add(hitbox);
+      await game.ready();
+
+      expect(hitbox.passthroughParent, testBlock);
     });
   });
 }

@@ -5,8 +5,6 @@ import 'package:flame_test/flame_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-import '_help.dart';
-
 void main() {
   group('Matrix4Extension', () {
     final matrix4 = Matrix4.fromList([
@@ -35,7 +33,7 @@ void main() {
 
     testRandom('translate2 calls translate on the matrix with a vector',
         (Random r) {
-      final matrix4 = MockMatrix4();
+      final matrix4 = _MockMatrix4();
       final v = Vector2(r.nextDouble(), r.nextDouble());
       matrix4.translate2(v);
       verify(() => matrix4.translate(v.x, v.y)).called(1);
@@ -104,6 +102,4 @@ void main() {
   });
 }
 
-// This need the mixin because Mock's == paramter is not nullable
-// but Matrix4's == paramter is nullable
-class MockMatrix4 extends Mock with NullableEqualsMixin implements Matrix4 {}
+class _MockMatrix4 extends Mock implements Matrix4 {}

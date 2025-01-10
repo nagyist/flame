@@ -1,3 +1,4 @@
+import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/experimental.dart';
 import 'package:flame_test/flame_test.dart';
@@ -35,6 +36,13 @@ void main() {
         () => BoundedPositionBehavior(bounds: shape, precision: 0),
         failsAssert('Precision must be positive: 0.0'),
       );
+    });
+
+    test('update bounds while target is null', () {
+      final circle1 = Circle(Vector2.zero(), 10);
+      final circle2 = Circle(Vector2.all(30), 10);
+      final boundedPositionBehavior = BoundedPositionBehavior(bounds: circle1);
+      expect(() => boundedPositionBehavior.bounds = circle2, returnsNormally);
     });
 
     testWithFlameGame('bad parent', (game) async {

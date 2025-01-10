@@ -1,7 +1,9 @@
 import 'dart:math' as math;
+
 import 'dart:ui' hide Offset;
 
 import 'package:collection/collection.dart';
+import 'package:flame/camera.dart';
 import 'package:flame/src/anchor.dart';
 import 'package:flame/src/components/core/component.dart';
 import 'package:flame/src/components/mixins/coordinate_transform.dart';
@@ -79,6 +81,7 @@ class PositionComponent extends Component
     Anchor? anchor,
     super.children,
     super.priority,
+    super.key,
   })  : transform = Transform2D(),
         _anchor = anchor ?? Anchor.topLeft,
         _size = NotifyingVector2.copy(size ?? Vector2.zero()) {
@@ -229,7 +232,7 @@ class PositionComponent extends Component
   double get absoluteAngle {
     // TODO(spydon): take scale into consideration
     return ancestors(includeSelf: true)
-        .whereType<PositionComponent>()
+        .whereType<ReadOnlyAngleProvider>()
         .map((c) => c.angle)
         .sum;
   }
@@ -250,7 +253,7 @@ class PositionComponent extends Component
 
   //#region Coordinate transformations
 
-  /// Test whether the `point` (given in global coordinates) lies within this
+  /// Test whether the `point` (given in local coordinates) lies within this
   /// component. The top and the left borders of the component are inclusive,
   /// while the bottom and the right borders are exclusive.
   @override
@@ -261,16 +264,21 @@ class PositionComponent extends Component
         (point.y < _size.y);
   }
 
+  /// Test whether the `point` (given in global coordinates) lies within this
+  /// component. The top and the left borders of the component are inclusive,
+  /// while the bottom and the right borders are exclusive.
   @override
   bool containsPoint(Vector2 point) {
     return containsLocalPoint(absoluteToLocal(point));
   }
 
   @override
-  Vector2 parentToLocal(Vector2 point) => transform.globalToLocal(point);
+  Vector2 parentToLocal(Vector2 point, {Vector2? output}) =>
+      transform.globalToLocal(point, output: output);
 
   @override
-  Vector2 localToParent(Vector2 point) => transform.localToGlobal(point);
+  Vector2 localToParent(Vector2 point, {Vector2? output}) =>
+      transform.localToGlobal(point, output: output);
 
   /// Convert local coordinates of a point [point] inside the component
   /// into the parent's coordinate space.
@@ -424,6 +432,7 @@ class PositionComponent extends Component
 
   @override
   void renderDebugMode(Canvas canvas) {
+    final zoom = CameraComponent.currentCamera?.viewfinder.zoom ?? 1.0;
     super.renderDebugMode(canvas);
     final precision = debugCoordinatesPrecision;
     canvas.drawRect(size.toRect(), debugPaint);
@@ -439,7 +448,7 @@ class PositionComponent extends Component
       debugTextPaint.render(
         canvas,
         'x:$x1str y:$y1str',
-        Vector2(-10 * (precision + 3), -15),
+        Vector2(-10 * (precision + 3) / zoom, -15 / zoom),
       );
       // print coordinates at the bottom-right corner
       final p2 = absolutePositionOfAnchor(Anchor.bottomRight);
@@ -448,7 +457,7 @@ class PositionComponent extends Component
       debugTextPaint.render(
         canvas,
         'x:$x2str y:$y2str',
-        Vector2(size.x - 10 * (precision + 3), size.y),
+        Vector2(size.x - 10 * (precision + 3) / zoom, size.y),
       );
     }
   }
@@ -493,5 +502,17 @@ class PositionComponent extends Component
   void setByRect(Rect rect) {
     size.setValues(rect.width, rect.height);
     topLeftPosition = rect.topLeft.toVector2();
+  }
+
+  @override
+  String toString() {
+    // ignore_for_file: no_runtimeType_toString
+    return '''
+$runtimeType(
+  position: ${position.toStringWithMaxPrecision(4)},
+  size: ${size.toStringWithMaxPrecision(4)},
+  angle: $angle,
+  scale: $scale,
+)''';
   }
 }

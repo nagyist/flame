@@ -1,4 +1,4 @@
-# Other Inputs
+# Other Inputs and Helpers
 
 This includes documentation for input methods besides keyboard and mouse.
 
@@ -14,16 +14,10 @@ Flame provides a component capable of creating a virtual joystick for taking inp
 To use this feature, you need to create a `JoystickComponent`, configure it the way you want, and
 add it to your game.
 
-Check this example to get a better understanding:
+Check out the following example to get a better understanding:
 
 ```dart
-class MyGame extends FlameGame with HasDraggables {
-
-  MyGame() {
-    joystick.addObserver(player);
-    add(player);
-    add(joystick);
-  }
+class MyGame extends FlameGame {
 
   @override
   Future<void> onLoad() async {
@@ -52,8 +46,8 @@ class MyGame extends FlameGame with HasDraggables {
   }
 }
 
-class JoystickPlayer extends SpriteComponent with HasGameRef {
-  JoystickPlayer(this.joystick)
+class Player extends SpriteComponent with HasGameRef {
+  Player(this.joystick)
     : super(
         anchor: Anchor.center,
         size: Vector2.all(100.0),
@@ -73,36 +67,40 @@ class JoystickPlayer extends SpriteComponent with HasGameRef {
   @override
   void update(double dt) {
     if (joystick.direction != JoystickDirection.idle) {
-      position.add(joystick.velocity * maxSpeed * dt);
+      position.add(joystick.relativeDelta  * maxSpeed * dt);
       angle = joystick.delta.screenAngle();
     }
   }
 }
 ```
 
-So in this example, we create the classes `MyGame` and `Player`. `MyGame` creates a joystick which is
-passed to the `Player` when it is created. In the `Player` class we act upon the current state of
-the joystick.
+In this example, we created the classes `MyGame` and `Player`.
+`MyGame` creates a joystick which is passed to the `Player` when the latter is created.
+In the `Player` class we act upon the current state of the joystick.
 
 The joystick has a few fields that change depending on what state it is in.
-These are the fields that should be used to know the state of the joystick:
+
+Following fields should be used to know the state of the joystick:
 
 - `intensity`: The percentage [0.0, 1.0] that the knob is dragged from the epicenter to the edge of
   the joystick (or `knobRadius` if that is set).
 - `delta`: The absolute amount (defined as a `Vector2`) that the knob is dragged from its epicenter.
-- `velocity`: The percentage, presented as a `Vector2`, and direction that the knob is currently
+- `relativeDelta`: The percentage, presented as a `Vector2`, and direction that the knob is currently
   pulled from its base position to a edge of the joystick.
 
 If you want to create buttons to go with your joystick, check out
 [`HudButtonComponent`](#hudbuttoncomponent).
 
-A full examples of how to use it can be found
-[here](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/input/joystick_example.dart).
-And it can be seen running [here](https://examples.flame-engine.org/#/Input_Joystick).
+For the complete code on implementing the joystick, check out the
+[Joystick Example](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/input/joystick_example.dart).
+You can also view the
+[JoystickComponent in action](https://examples.flame-engine.org/#/Input_Joystick)
+to see a live example of the joystick input function integrated into a game.
 
-There is also a more advanced example
-[here](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/input/joystick_advanced_example.dart)
-which is running [here](https://examples.flame-engine.org/#/Input_Joystick%20Advanced).
+For an additional challenge, explore the
+[Advanced Joystick Example](https://github.com/flame-engine/flame/blob/main/examples/lib/stories/input/joystick_advanced_example.dart).
+See what else the advanced features can do in the
+[live demo](https://examples.flame-engine.org/#/Input_Joystick_Advanced).
 
 
 ## HudButtonComponent
@@ -140,5 +138,46 @@ else which isn't a pure sprite.
 
 ## Gamepad
 
-Flame has a separate plugin to support external game controllers (gamepads), check
-[here](https://github.com/flame-engine/flame_gamepad) for more information.
+Flame has a dedicated plugin to support external game controllers (gamepads).
+Find more information in the [Gamepads repository](https://github.com/flame-engine/gamepad).
+
+
+## AdvancedButtonComponent
+
+The `AdvancedButtonComponent` have separate states for each of the different pointer phases.
+The skin can be customized for each state and each skin is represented by a `PositionComponent`.
+
+These are the fields that can be used to customize the looks of the `AdvancedButtonComponent`:
+
+- `defaultSkin`: Component that will be displayed by default on the button.
+- `downSkin`: Component displayed when the button is clicked or tapped.
+- `hoverSkin`: Component displayed when the button is hovered. (desktop and web).
+- `defaultLabel`: Component shown on top of skins. Automatically aligned to center.
+- `disabledSkin`: Component displayed when button is disabled.
+- `disabledLabel`: Component shown on top of skins when button is disabled.
+
+
+## ToggleButtonComponent
+
+The [ToggleButtonComponent] is an [AdvancedButtonComponent] that can switch between selected
+and not selected.
+
+In addition to the already existing skins, the [ToggleButtonComponent] contains the following skins:
+
+- `defaultSelectedSkin`: The component to display when the button is selected.
+- `downAndSelectedSkin`: The component that is displayed when the selectable button is selected and
+  pressed.
+- `hoverAndSelectedSkin`: Hover on selectable and selected button (desktop and web).
+- `disabledAndSelectedSkin`: For when the button is selected and in the disabled state.
+- `defaultSelectedLabel`: Component shown on top of the skins when button is selected.
+
+
+## IgnoreEvents mixin
+
+If you don't want a component subtree to receive events, you can use the `IgnoreEvents` mixin.
+Once you have added this mixin you can turn off events to reach a component and its descendants by
+setting `ignoreEvents = true` (default when the mixin is added), and then set it to `false` when you
+want to receive events again.
+
+This can be done for optimization purposes, since all events currently go through the whole
+component tree.

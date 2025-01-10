@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -35,7 +36,7 @@ void main() {
         initialRoute: 'start',
         routes: {
           'start': Route(Component.new),
-          'new': CustomRoute(
+          'new': _CustomRoute(
             onPush: (self, prevRoute) {
               onPushCalled++;
               previousRoute = prevRoute;
@@ -80,7 +81,7 @@ void main() {
         initialRoute: 'start',
         routes: {
           'start': Route(Component.new),
-          'first': CustomRoute(
+          'first': _CustomRoute(
             onPush: (self, prevRoute) {
               onPushCalled++;
               previousRoute = prevRoute;
@@ -94,7 +95,7 @@ void main() {
               return PositionComponent();
             },
           ),
-          'second': CustomRoute(
+          'second': _CustomRoute(
             onPush: (self, prevRoute) {
               onPushCalled++;
               previousRoute = prevRoute;
@@ -168,7 +169,7 @@ void main() {
         initialRoute: 'start',
         routes: {
           'start': Route(Component.new),
-          'first': CustomRoute(
+          'first': _CustomRoute(
             maintainState: false,
             onPush: (self, prevRoute) {
               onPushCalled++;
@@ -183,7 +184,7 @@ void main() {
               return PositionComponent();
             },
           ),
-          'second': CustomRoute(
+          'second': _CustomRoute(
             onPush: (self, prevRoute) {
               onPushCalled++;
               previousRoute = prevRoute;
@@ -256,7 +257,7 @@ void main() {
         initialRoute: 'start',
         routes: {
           'start': Route(_TimerComponent.new),
-          'pause': CustomRoute(
+          'pause': _CustomRoute(
             builder: Component.new,
             onPush: (self, route) => route?.stopTime(),
             onPop: (self, route) => route.resumeTime(),
@@ -274,19 +275,19 @@ void main() {
       router.pushNamed('pause');
       await game.ready();
       expect(router.currentRoute.name, 'pause');
-      expect(router.previousRoute!.timeSpeed, 0);
+      expect(router.previousRoute!.timeScale, 0);
 
       game.update(10);
       expect(timer.elapsedTime, 1);
 
-      router.previousRoute!.timeSpeed = 0.1;
+      router.previousRoute!.timeScale = 0.1;
       game.update(10);
       expect(timer.elapsedTime, 2);
 
       router.pop();
       await game.ready();
       expect(router.currentRoute.name, 'start');
-      expect(router.currentRoute.timeSpeed, 1);
+      expect(router.currentRoute.timeScale, 1);
 
       game.update(10);
       expect(timer.elapsedTime, 12);
@@ -361,7 +362,7 @@ void main() {
                 size: Vector2.all(100),
               ),
             ),
-            'green': CustomRoute(
+            'green': _CustomRoute(
               builder: () => _ColoredComponent(
                 color: const Color(0x8800FF00),
                 position: Vector2.all(10),
@@ -393,7 +394,7 @@ void main() {
                 size: Vector2.all(100),
               ),
             ),
-            'green': CustomRoute(
+            'green': _CustomRoute(
               builder: () => _ColoredComponent(
                 color: const Color(0x8800FF00),
                 position: Vector2.all(10),
@@ -416,14 +417,16 @@ void main() {
     );
 
     testWithFlameGame('componentsAtPoint for opaque route', (game) async {
+      final initialComponent = PositionComponent(size: Vector2.all(100));
+      final newComponent = PositionComponent(size: Vector2.all(100));
       final router = RouterComponent(
         initialRoute: 'initial',
         routes: {
           'initial': Route(
-            () => PositionComponent(size: Vector2.all(100)),
+            () => initialComponent,
           ),
           'new': Route(
-            () => PositionComponent(size: Vector2.all(100)),
+            () => newComponent,
           ),
         },
       )..addToParent(game);
@@ -432,42 +435,88 @@ void main() {
       router.pushNamed('new');
       await game.ready();
       expect(
-        game.componentsAtPoint(Vector2(50, 50)).toList(),
-        [router.currentRoute.children.first, game],
+        game.componentsAtPoint(Vector2(50, 50)).contains(newComponent),
+        isTrue,
+      );
+      expect(
+        game.componentsAtPoint(Vector2(50, 50)).contains(initialComponent),
+        isFalse,
       );
     });
 
-    testWithFlameGame('componentsAtPoint for transparent route', (game) async {
+    testWithFlameGame(
+      'componentsAtPoint for transparent route',
+      (game) async {
+        final initialComponent = PositionComponent(size: Vector2.all(100));
+        final newComponent = PositionComponent(size: Vector2.all(100));
+        final router = RouterComponent(
+          initialRoute: 'initial',
+          routes: {
+            'initial': Route(
+              () => initialComponent,
+            ),
+            'new': Route(
+              () => newComponent,
+              transparent: true,
+            ),
+          },
+        )..addToParent(game);
+        await game.ready();
+
+        router.pushNamed('new');
+        await game.ready();
+        expect(
+          game.componentsAtPoint(Vector2(50, 50)).contains(newComponent),
+          isTrue,
+        );
+        expect(
+          game.componentsAtPoint(Vector2(50, 50)).contains(initialComponent),
+          isTrue,
+        );
+      },
+    );
+    testWithFlameGame('Route with loading', (game) async {
+      final loadingComponent = PositionComponent(size: Vector2.all(100));
+      final pageComponent = _HeavyComponent()..size = Vector2.all(100);
       final router = RouterComponent(
-        initialRoute: 'initial',
+        initialRoute: 'new',
         routes: {
-          'initial': Route(
-            () => PositionComponent(size: Vector2.all(100)),
+          'start': Route(
+            Component.new,
           ),
           'new': Route(
-            () => PositionComponent(size: Vector2.all(100)),
-            transparent: true,
+            () {
+              return pageComponent;
+            },
+            loadingBuilder: () {
+              return loadingComponent;
+            },
           ),
         },
-      )..addToParent(game);
-      await game.ready();
-
-      router.pushNamed('new');
+      );
+      game.add(router);
       await game.ready();
       expect(
-        game.componentsAtPoint(Vector2(50, 50)).toList(),
-        [
-          router.currentRoute.children.first,
-          router.previousRoute!.children.first,
-          game,
-        ],
+        pageComponent.isMounted,
+        isFalse,
+      );
+      expect(loadingComponent.isMounted, isTrue);
+      pageComponent.completer.complete();
+      await game.ready();
+      expect(
+        pageComponent.isMounted,
+        isTrue,
+      );
+      expect(
+        loadingComponent.isRemoved,
+        isTrue,
       );
     });
   });
 }
 
-class CustomRoute extends Route {
-  CustomRoute({
+class _CustomRoute extends Route {
+  _CustomRoute({
     Component Function()? builder,
     super.transparent,
     super.maintainState,
@@ -514,5 +563,15 @@ class _ColoredComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     canvas.drawRect(size.toRect(), _paint);
+  }
+}
+
+class _HeavyComponent extends PositionComponent {
+  Duration dummyTime = const Duration(seconds: 3);
+  Completer<void> completer = Completer();
+  @override
+  FutureOr<void> onLoad() async {
+    await completer.future;
+    return super.onLoad();
   }
 }

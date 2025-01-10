@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
 import 'package:flame/extensions.dart';
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
@@ -23,21 +24,19 @@ class MyGame extends FlameGame with TapDetector {
   }
 
   @override
-  bool onTapUp(TapUpInfo info) {
+  void onTapUp(TapUpInfo info) {
     add(
       SpriteAnimationComponent.fromFrameData(
         playerSprite,
         SpriteAnimationData.sequenced(
           textureSize: Vector2(48, 32),
           amount: 4,
-          stepTime: .2,
+          stepTime: 0.2,
         ),
         size: Vector2(100, 50),
         anchor: Anchor.center,
-        position: info.eventPosition.game,
+        position: info.eventPosition.widget,
       ),
     );
-
-    return true;
   }
 }

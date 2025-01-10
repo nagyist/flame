@@ -3,6 +3,7 @@ import 'package:flame/src/camera/viewport.dart';
 import 'package:flame/src/components/core/component.dart';
 import 'package:flame/src/components/position_component.dart';
 import 'package:flame/src/effects/provider_interfaces.dart';
+import 'package:vector_math/vector_math_64.dart';
 
 /// This behavior will make the [owner] follow the [target].
 ///
@@ -18,12 +19,13 @@ import 'package:flame/src/effects/provider_interfaces.dart';
 /// movement to the horizontal/vertical directions respectively.
 class FollowBehavior extends Component {
   FollowBehavior({
-    required PositionProvider target,
+    required ReadOnlyPositionProvider target,
     PositionProvider? owner,
     double maxSpeed = double.infinity,
     this.horizontalOnly = false,
     this.verticalOnly = false,
     super.priority,
+    super.key,
   })  : _target = target,
         _owner = owner,
         _speed = maxSpeed,
@@ -33,8 +35,8 @@ class FollowBehavior extends Component {
           'The behavior cannot be both horizontalOnly and verticalOnly',
         );
 
-  PositionProvider get target => _target;
-  final PositionProvider _target;
+  ReadOnlyPositionProvider get target => _target;
+  final ReadOnlyPositionProvider _target;
 
   PositionProvider get owner => _owner!;
   PositionProvider? _owner;
@@ -44,6 +46,8 @@ class FollowBehavior extends Component {
 
   final bool horizontalOnly;
   final bool verticalOnly;
+
+  final _tempDelta = Vector2.zero();
 
   @override
   void onMount() {
@@ -58,17 +62,18 @@ class FollowBehavior extends Component {
 
   @override
   void update(double dt) {
-    final delta = target.position - owner.position;
-    if (horizontalOnly) {
-      delta.y = 0;
+    _tempDelta.setValues(
+      verticalOnly ? 0 : target.position.x - owner.position.x,
+      horizontalOnly ? 0 : target.position.y - owner.position.y,
+    );
+
+    final distance = _tempDelta.length;
+    final deltaOffset = _speed * dt;
+    if (distance > deltaOffset) {
+      _tempDelta.scale(deltaOffset / distance);
     }
-    if (verticalOnly) {
-      delta.x = 0;
+    if (_tempDelta.x != 0 || _tempDelta.y != 0) {
+      owner.position = _tempDelta..add(owner.position);
     }
-    final distance = delta.length;
-    if (distance > _speed * dt) {
-      delta.scale(_speed * dt / distance);
-    }
-    owner.position = delta..add(owner.position);
   }
 }

@@ -2,11 +2,10 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
+import 'package:flame/cache.dart';
+import 'package:flame/components.dart';
+import 'package:flame/extensions.dart';
 import 'package:flame/geometry.dart';
-import 'package:flame/src/anchor.dart';
-import 'package:flame/src/cache/value_cache.dart';
-import 'package:flame/src/extensions/rect.dart';
-import 'package:flame/src/extensions/vector2.dart';
 import 'package:meta/meta.dart';
 
 class PolygonComponent extends ShapeComponent {
@@ -26,8 +25,6 @@ class PolygonComponent extends ShapeComponent {
   /// With this constructor you create your [PolygonComponent] from positions in
   /// anywhere in the 2d-space. It will automatically calculate the [size] of
   /// the Polygon (the bounding box) if no size it given.
-  /// NOTE: Always define your polygon in a counter-clockwise fashion (in the
-  /// screen coordinate system).
   PolygonComponent(
     this._vertices, {
     super.position,
@@ -39,6 +36,7 @@ class PolygonComponent extends ShapeComponent {
     super.priority,
     super.paint,
     super.paintLayers,
+    super.key,
     bool? shrinkToBounds,
   })  : assert(
           _vertices.length > 2,
@@ -79,6 +77,8 @@ class PolygonComponent extends ShapeComponent {
     Paint? paint,
     List<Paint>? paintLayers,
     bool? shrinkToBounds,
+    ComponentKey? key,
+    List<Component>? children,
   }) : this(
           normalsToVertices(relation, parentSize),
           position: position,
@@ -89,6 +89,8 @@ class PolygonComponent extends ShapeComponent {
           paint: paint,
           paintLayers: paintLayers,
           shrinkToBounds: shrinkToBounds,
+          key: key,
+          children: children,
         );
 
   @internal
@@ -106,10 +108,6 @@ class PolygonComponent extends ShapeComponent {
         .toList(growable: false);
   }
 
-  // Used to not create new Vector2 objects when calculating the top left of the
-  // bounds of the polygon.
-  final _topLeft = Vector2.zero();
-
   @protected
   void refreshVertices({
     required List<Vector2> newVertices,
@@ -119,24 +117,34 @@ class PolygonComponent extends ShapeComponent {
       newVertices.length == _vertices.length,
       'A polygon can not change their number of vertices',
     );
-    _topLeft.setFrom(newVertices[0]);
-    newVertices.forEachIndexed((i, _) {
+    // If the list isn't ccw we have to reverse the order in order for
+    // `containsPoint` to work.
+    if (_isClockwise(newVertices)) {
+      newVertices.reverse();
+    }
+    final topLeft = Vector2.zero();
+    topLeft.setFrom(newVertices[0]);
+    for (var i = 0; i < newVertices.length; i++) {
       final newVertex = newVertices[i];
       _vertices[i].setFrom(newVertex);
-      _topLeft.x = min(_topLeft.x, newVertex.x);
-      _topLeft.y = min(_topLeft.y, newVertex.y);
-    });
+      topLeft.x = min(topLeft.x, newVertex.x);
+      topLeft.y = min(topLeft.y, newVertex.y);
+    }
+    for (var i = 0; i < newVertices.length; i++) {
+      final newVertex = newVertices[i];
+      _vertices[i].setFrom(newVertex - topLeft);
+    }
     _path
       ..reset()
       ..addPolygon(
-        vertices.map((p) => (p - _topLeft).toOffset()).toList(growable: false),
+        _vertices.map((p) => p.toOffset()).toList(growable: false),
         true,
       );
     if (shrinkToBoundsOverride ?? shrinkToBounds) {
       final bounds = _path.getBounds();
       size.setValues(bounds.width, bounds.height);
       if (!manuallyPositioned) {
-        position = Anchor.topLeft.toOtherAnchorPosition(_topLeft, anchor, size);
+        position = Anchor.topLeft.toOtherAnchorPosition(topLeft, anchor, size);
       }
     }
   }
@@ -152,14 +160,14 @@ class PolygonComponent extends ShapeComponent {
       scale,
       angle,
     ])) {
-      vertices.forEachIndexed((i, vertex) {
+      for (var i = 0; i < _vertices.length; i++) {
+        final vertex = _vertices[i];
         _globalVertices[i]
           ..setFrom(vertex)
-          ..sub(_topLeft)
           ..multiply(scale)
           ..add(position)
           ..rotate(angle, center: position);
-      });
+      }
       if (scale.y.isNegative || scale.x.isNegative) {
         // Since the list will be clockwise we have to reverse it for it to
         // become counterclockwise.
@@ -192,45 +200,61 @@ class PolygonComponent extends ShapeComponent {
     canvas.drawPath(_path, debugPaint);
   }
 
-  /// Checks whether the polygon contains the [point].
-  /// Note: The polygon needs to be convex for this to work.
-  @override
-  bool containsPoint(Vector2 point) {
+  bool _containsPoint(Vector2 point, List<Vector2> vertices) {
     // If the size is 0 then it can't contain any points
     if (size.x == 0 || size.y == 0) {
       return false;
     }
 
-    final vertices = globalVertices();
+    // Count the amount of edges crossed by going left from the point
+    var count = 0;
     for (var i = 0; i < vertices.length; i++) {
-      final edge = getEdge(i, vertices: vertices);
-      final isOutside = (edge.to.x - edge.from.x) * (point.y - edge.from.y) -
-              (point.x - edge.from.x) * (edge.to.y - edge.from.y) >
-          0;
-      if (isOutside) {
-        // Point is outside of convex polygon
-        return false;
+      final from = vertices[i];
+      final to = vertices[(i + 1) % vertices.length];
+
+      // Skip if the edge is entirely to the right, above or below the point
+      if (from.x > point.x && to.x > point.x ||
+          min(from.y, to.y) > point.y ||
+          max(from.y, to.y) < point.y) {
+        continue;
+      }
+
+      // Get x coordinate of where the edge intersects with the horizontal line
+      double intersectionX;
+      if (from.y == to.y) {
+        intersectionX = min(from.x, to.x);
+      } else {
+        intersectionX =
+            ((point.y - from.y) * (to.x - from.x)) / (to.y - from.y) + from.x;
+      }
+
+      if (intersectionX == point.x) {
+        // If the point is on the edge, return true
+        return true;
+      } else if (intersectionX < point.x) {
+        // Only count one edge if vertex is crossed
+        // Only count if edges cross the line, not just touch it and go back
+        if ((from.y != point.y && to.y != point.y) ||
+            to.y == from.y ||
+            point.y == max(from.y, to.y)) {
+          count++;
+        }
       }
     }
-    return true;
+
+    // If the amount of edges crossed is odd, the point is inside the polygon
+    return (count % 2).isOdd;
+  }
+
+  @override
+  bool containsPoint(Vector2 point) {
+    final vertices = globalVertices();
+    return _containsPoint(point, vertices);
   }
 
   @override
   bool containsLocalPoint(Vector2 point) {
-    if (size.x == 0 || size.y == 0) {
-      return false;
-    }
-    for (var i = 0; i < _vertices.length; i++) {
-      final edge = getEdge(i, vertices: vertices);
-      final isOutside = (edge.to.x - edge.from.x) *
-                  (point.y - edge.from.y + _topLeft.y) -
-              (point.x - edge.from.x + _topLeft.x) * (edge.to.y - edge.from.y) >
-          0;
-      if (isOutside) {
-        return false;
-      }
-    }
-    return true;
+    return _containsPoint(point, _vertices);
   }
 
   /// Return all vertices as [LineSegment]s that intersect [rect], if [rect]
@@ -270,5 +294,14 @@ class PolygonComponent extends ShapeComponent {
       list[i] = list[list.length - 1 - i];
       list[list.length - 1 - i] = temp;
     }
+  }
+
+  bool _isClockwise(List<Vector2> vertices) {
+    var area = 0.0;
+    for (var i = 0; i < vertices.length; i++) {
+      final j = (i + 1) % vertices.length;
+      area += vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
+    }
+    return area >= 0;
   }
 }

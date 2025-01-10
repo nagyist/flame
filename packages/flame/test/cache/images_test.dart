@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
 import 'package:flame/cache.dart';
 import 'package:flame/flame.dart';
 import 'package:flame_test/flame_test.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
+class _MockAssetBundle extends Mock implements AssetBundle {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +20,13 @@ void main() {
       'AAAAXNSR0IArs4c6QAAAA1JREFUGFdjWP33/n8ACGUDhwieHSEAAAAASUVORK5CYII=';
 
   group('Images', () {
+    test('can add a base64 image to the cache', () async {
+      final cache = Images();
+      await cache.addFromBase64Data('img', pixel);
+
+      expect(cache.fromCache('img'), isA<Image>());
+    });
+
     test('load image', () async {
       final cache = Images();
       final image = await cache.fromBase64('img', pixel);
@@ -80,6 +91,18 @@ void main() {
       }
     });
 
+    test('keys', () {
+      final cache = Images();
+      final images = List.generate(10, (_) => _MockImage());
+      for (var i = 0; i < images.length; i++) {
+        cache.add(i.toString(), images[i]);
+      }
+      expect(
+        cache.keys.toSet(),
+        {for (var i = 0; i < images.length; i++) i.toString()},
+      );
+    });
+
     testWithFlameGame(
       'prefix on game.images can be changed',
       (game) async {
@@ -100,6 +123,7 @@ void main() {
         final img = _MockImage();
         game.images.add('my image', img);
         expect(Flame.images.containsKey('my image'), isTrue);
+        expect(Flame.images.keys, hasLength(1));
 
         game.images = Images();
         game.images.add('new image', img);
@@ -110,7 +134,7 @@ void main() {
     test('throws when setting an invalid prefix', () {
       final images = Images();
       expect(
-        () => images.prefix = 'adasd',
+        () => images.prefix = 'foo',
         failsAssert('Prefix must be empty or end with a "/"'),
       );
     });
@@ -124,6 +148,24 @@ void main() {
       await images.ready();
       expect(images.fromCache('image1'), isNotNull);
       expect(images.fromCache('image2'), isNotNull);
+    });
+
+    test('can have its bundle overridden', () async {
+      final bundle = _MockAssetBundle();
+      when(() => bundle.load(any())).thenAnswer(
+        (_) async {
+          final list = base64Decode(pixel.split(',').last);
+          return ByteData.view(list.buffer);
+        },
+      );
+
+      final images = Images(bundle: bundle);
+      final image = await images.load('pixel.png');
+
+      expect(image.width, equals(1));
+      expect(image.height, equals(1));
+
+      verify(() => bundle.load('assets/images/pixel.png')).called(1);
     });
   });
 }
